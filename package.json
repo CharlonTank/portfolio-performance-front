@@ -1,0 +1,10 @@
+{
+  "name": "portfolio-performance",
+  "version": "1.0.0",
+  "scripts": {
+    "api": "elm-graphql http://localhost:3000/graphql --base PortfolioPerformance",
+    "rails-graphql-api": "elm-graphql http://localhost:3123/graphql --base PortfolioPerformance",
+    "live": "elm-live src/Main.elm -u --open",
+    "lived": "elm-live src/Main.elm -u --open -- --debug"
+  }
+}
