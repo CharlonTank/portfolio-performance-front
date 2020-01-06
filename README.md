@@ -50,10 +50,14 @@ database :
 
 portfolio_state
     total : Integer
-    allocations selected : List String (Json)
-    rebalance_status : Integer
-        No Monthly Yearly
+    rebalance_status : Integer (No Monthly Yearly)
     token : String (Uniq)
+
+allocation
+    symbol : String
+    percentage : Int
+
+portfolio_state has_many allocations
 
 now, users can save their inputs with their generated tokens and it changes its URL.
 
