@@ -1,3 +1,7 @@
+This is the front that comes with portfolio-performance-api
+
+---------------------------------------------------
+
 MVP ->
 
 1) Need to get all the different "allocations selected" in the portfolio from the "time selected" to now. With API key stored in backend
@@ -59,6 +63,4 @@ with a new token so it's gonna change their URL again
 url?token=<token>
 -> get portfolio state where token is <token>
 -> fill inputs
--> maybe launch the calculation direcly without user input
-
-
+-> maybe launch the calculation direcly without user inputs
