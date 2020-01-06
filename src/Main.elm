@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import BodyBuilder exposing (..)
 import BodyBuilder.Attributes as Attributes exposing (..)
+import BodyBuilder.Elements.Clickable exposing (..)
 import BodyBuilder.Events as Events
 import BodyBuilder.Style as Style
 import Browser
@@ -21,6 +22,7 @@ import Elegant.Outline as Outline
 import Elegant.Padding as Padding
 import Elegant.Typography as Typography
 import Form exposing (..)
+import List.Extra exposing (..)
 import Modifiers exposing (..)
 import Task
 import Time
@@ -57,6 +59,10 @@ type Msg
     | ChangeStartDate DateMsg
     | AdjustTimeZone Time.Zone
     | GetTime Time.Posix
+    | ChangeSymbol Int String
+    | ChangePercentage Int Int
+    | AddAllocation
+    | CalculateValueToday
 
 
 homeView : Model -> Document Msg
@@ -86,16 +92,59 @@ view model =
                 , Style.box [ Box.padding [ Padding.horizontal Constants.medium ] ]
                 ]
             ]
-            [ buildInputNumber
+            ([ buildInputNumber
                 (inputLabelPlaceholder "Initial Balance" "1337")
                 model.inputs.initialBalance
                 ChangeInitialBalance
-            , buildDate
+             , buildDate
                 (inputLabelPlaceholder "Start Date" "2013-03-20")
                 model.inputs.startDate
                 (DateBetween (fromPosix (Time.millisToPosix 0)) model.dateNow)
                 ChangeStartDate
-            ]
+             ]
+                ++ buildMutilpleInputText model.inputs.allocations
+                ++ (monochromeSquaredButton
+                        { background = Color.white
+                        , border = Color.black
+                        , text = Color.black
+                        }
+                        "Add"
+                        AddAllocation
+                        :: (case List.foldl (\a -> \b -> a.percentage + b) 0 model.inputs.allocations of
+                                100 ->
+                                    [ monochromeSquaredButton
+                                        { background = Color.white
+                                        , border = Color.black
+                                        , text = Color.black
+                                        }
+                                        "Click here to value you balance today"
+                                        CalculateValueToday
+                                    ]
+
+                                i ->
+                                    [ div [] [ text ("Make sure to have 100 percents in total : " ++ String.fromInt i ++ "%") ] ]
+                           )
+                   )
+            )
+        ]
+
+
+buildMutilpleInputText : List Allocation -> List (NodeWithStyle Msg)
+buildMutilpleInputText list =
+    List.indexedMap buildSymbolAndPercentage list
+
+
+buildSymbolAndPercentage : Int -> Allocation -> NodeWithStyle Msg
+buildSymbolAndPercentage i a =
+    div []
+        [ buildInputText
+            (inputLabelPlaceholder "Add a symbol" "AAPL")
+            a.symbol
+            (ChangeSymbol i)
+        , buildInputNumber
+            (inputLabelPlaceholder "Add a percentage" "42")
+            a.percentage
+            (ChangePercentage i)
         ]
 
 
@@ -161,6 +210,22 @@ update msg model =
             , Cmd.none
             )
 
+        ChangeSymbol i str ->
+            ( { model | inputs = { inputs | allocations = updateAt i (\a -> { a | symbol = str }) inputs.allocations } }
+            , Cmd.none
+            )
+
+        ChangePercentage i nb ->
+            ( { model | inputs = { inputs | allocations = updateAt i (\a -> { a | percentage = nb }) inputs.allocations } }
+            , Cmd.none
+            )
+
+        AddAllocation ->
+            ( { model | inputs = { inputs | allocations = inputs.allocations ++ [ Allocation "" 0 ] } }, Cmd.none )
+
+        CalculateValueToday ->
+            ( model, Cmd.none )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -175,7 +240,7 @@ initInputs : Nav.Key -> Inputs
 initInputs key =
     { startDate = Nothing
     , initialBalance = 0
-    , allocations = []
+    , allocations = [ Allocation "" 0 ]
     }
 
 
