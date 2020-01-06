@@ -20,25 +20,25 @@ import PortfolioPerformance.Union
 
 
 type alias BulkCreateAllocationRequiredArguments =
-    { allocation : List (Maybe PortfolioPerformance.InputObject.AllocationInputType) }
+    { allocation : List PortfolioPerformance.InputObject.AllocationInputType }
 
 
 {-| creates some Allocations
 -}
 bulk_create_allocation : BulkCreateAllocationRequiredArguments -> SelectionSet decodesTo PortfolioPerformance.Object.Allocation -> SelectionSet (Maybe (List (Maybe decodesTo))) RootMutation
 bulk_create_allocation requiredArgs object_ =
-    Object.selectionForCompositeField "bulk_create_allocation" [ Argument.required "allocation" requiredArgs.allocation (PortfolioPerformance.InputObject.encodeAllocationInputType |> Encode.maybe |> Encode.list) ] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
+    Object.selectionForCompositeField "bulk_create_allocation" [ Argument.required "allocation" requiredArgs.allocation (PortfolioPerformance.InputObject.encodeAllocationInputType |> Encode.list) ] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
 
 
 type alias BulkCreatePortfolioStateRequiredArguments =
-    { portfolio_state : List (Maybe PortfolioPerformance.InputObject.PortfolioStateInputType) }
+    { portfolio_state : List PortfolioPerformance.InputObject.PortfolioStateInputType }
 
 
 {-| creates some PortfolioStates
 -}
 bulk_create_portfolio_state : BulkCreatePortfolioStateRequiredArguments -> SelectionSet decodesTo PortfolioPerformance.Object.PortfolioState -> SelectionSet (Maybe (List (Maybe decodesTo))) RootMutation
 bulk_create_portfolio_state requiredArgs object_ =
-    Object.selectionForCompositeField "bulk_create_portfolio_state" [ Argument.required "portfolio_state" requiredArgs.portfolio_state (PortfolioPerformance.InputObject.encodePortfolioStateInputType |> Encode.maybe |> Encode.list) ] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
+    Object.selectionForCompositeField "bulk_create_portfolio_state" [ Argument.required "portfolio_state" requiredArgs.portfolio_state (PortfolioPerformance.InputObject.encodePortfolioStateInputType |> Encode.list) ] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
 
 
 type alias BulkCreateSubscribedQueryRequiredArguments =
@@ -75,25 +75,25 @@ bulk_create_websocket_connection requiredArgs object_ =
 
 
 type alias BulkUpdateAllocationRequiredArguments =
-    { allocation : List (Maybe PortfolioPerformance.InputObject.AllocationInputType) }
+    { allocation : List PortfolioPerformance.InputObject.AllocationInputType }
 
 
 {-| Updates some Allocations
 -}
 bulk_update_allocation : BulkUpdateAllocationRequiredArguments -> SelectionSet decodesTo PortfolioPerformance.Object.Allocation -> SelectionSet (Maybe (List (Maybe decodesTo))) RootMutation
 bulk_update_allocation requiredArgs object_ =
-    Object.selectionForCompositeField "bulk_update_allocation" [ Argument.required "allocation" requiredArgs.allocation (PortfolioPerformance.InputObject.encodeAllocationInputType |> Encode.maybe |> Encode.list) ] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
+    Object.selectionForCompositeField "bulk_update_allocation" [ Argument.required "allocation" requiredArgs.allocation (PortfolioPerformance.InputObject.encodeAllocationInputType |> Encode.list) ] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
 
 
 type alias BulkUpdatePortfolioStateRequiredArguments =
-    { portfolio_state : List (Maybe PortfolioPerformance.InputObject.PortfolioStateInputType) }
+    { portfolio_state : List PortfolioPerformance.InputObject.PortfolioStateInputType }
 
 
 {-| Updates some PortfolioStates
 -}
 bulk_update_portfolio_state : BulkUpdatePortfolioStateRequiredArguments -> SelectionSet decodesTo PortfolioPerformance.Object.PortfolioState -> SelectionSet (Maybe (List (Maybe decodesTo))) RootMutation
 bulk_update_portfolio_state requiredArgs object_ =
-    Object.selectionForCompositeField "bulk_update_portfolio_state" [ Argument.required "portfolio_state" requiredArgs.portfolio_state (PortfolioPerformance.InputObject.encodePortfolioStateInputType |> Encode.maybe |> Encode.list) ] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
+    Object.selectionForCompositeField "bulk_update_portfolio_state" [ Argument.required "portfolio_state" requiredArgs.portfolio_state (PortfolioPerformance.InputObject.encodePortfolioStateInputType |> Encode.list) ] object_ (identity >> Decode.nullable >> Decode.list >> Decode.nullable)
 
 
 type alias BulkUpdateSubscribedQueryRequiredArguments =

@@ -1,4 +1,4 @@
-module Utils exposing (findBy, gray, intToMonth, textToHtml)
+module Utils exposing (findBy, gray, intToMonth, normalizeIntForDate, textToHtml)
 
 import BodyBuilder exposing (NodeWithStyle, br, text)
 import Color
@@ -63,3 +63,12 @@ intToMonth nb =
 
         _ ->
             Nothing
+
+
+normalizeIntForDate : String -> String
+normalizeIntForDate str =
+    if String.length str == 1 then
+        "0" ++ str
+
+    else
+        str

@@ -19,12 +19,11 @@ import PortfolioPerformance.Union
 
 buildAllocationInputType : AllocationInputTypeRequiredFields -> AllocationInputType
 buildAllocationInputType required =
-    { portfolio_state_id = required.portfolio_state_id, symbol = required.symbol, percentage = required.percentage }
+    { symbol = required.symbol, percentage = required.percentage }
 
 
 type alias AllocationInputTypeRequiredFields =
-    { portfolio_state_id : String
-    , symbol : String
+    { symbol : String
     , percentage : Int
     }
 
@@ -32,8 +31,7 @@ type alias AllocationInputTypeRequiredFields =
 {-| Type for the AllocationInputType input object.
 -}
 type alias AllocationInputType =
-    { portfolio_state_id : String
-    , symbol : String
+    { symbol : String
     , percentage : Int
     }
 
@@ -43,16 +41,16 @@ type alias AllocationInputType =
 encodeAllocationInputType : AllocationInputType -> Value
 encodeAllocationInputType input =
     Encode.maybeObject
-        [ ( "portfolio_state_id", Encode.string input.portfolio_state_id |> Just ), ( "symbol", Encode.string input.symbol |> Just ), ( "percentage", Encode.int input.percentage |> Just ) ]
+        [ ( "symbol", Encode.string input.symbol |> Just ), ( "percentage", Encode.int input.percentage |> Just ) ]
 
 
 buildPortfolioStateInputType : PortfolioStateInputTypeRequiredFields -> PortfolioStateInputType
 buildPortfolioStateInputType required =
-    { allocation_ids = required.allocation_ids, initial_balance = required.initial_balance, start_date = required.start_date }
+    { allocations = required.allocations, initial_balance = required.initial_balance, start_date = required.start_date }
 
 
 type alias PortfolioStateInputTypeRequiredFields =
-    { allocation_ids : List String
+    { allocations : List AllocationInputType
     , initial_balance : Int
     , start_date : String
     }
@@ -61,7 +59,7 @@ type alias PortfolioStateInputTypeRequiredFields =
 {-| Type for the PortfolioStateInputType input object.
 -}
 type alias PortfolioStateInputType =
-    { allocation_ids : List String
+    { allocations : List AllocationInputType
     , initial_balance : Int
     , start_date : String
     }
@@ -72,7 +70,7 @@ type alias PortfolioStateInputType =
 encodePortfolioStateInputType : PortfolioStateInputType -> Value
 encodePortfolioStateInputType input =
     Encode.maybeObject
-        [ ( "allocation_ids", (Encode.string |> Encode.list) input.allocation_ids |> Just ), ( "initial_balance", Encode.int input.initial_balance |> Just ), ( "start_date", Encode.string input.start_date |> Just ) ]
+        [ ( "allocations", (encodeAllocationInputType |> Encode.list) input.allocations |> Just ), ( "initial_balance", Encode.int input.initial_balance |> Just ), ( "start_date", Encode.string input.start_date |> Just ) ]
 
 
 buildSubscribedQueryInputType : (SubscribedQueryInputTypeOptionalFields -> SubscribedQueryInputTypeOptionalFields) -> SubscribedQueryInputType

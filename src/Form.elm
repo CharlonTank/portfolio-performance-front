@@ -1,5 +1,7 @@
 module Form exposing
     ( CommonParams
+    , DateBetween(..)
+    , DateMsg(..)
     , FullInputType
     , InputCheckboxContent
     , InputNumberContent
@@ -8,11 +10,11 @@ module Form exposing
     , buildCheckbox
     , buildDate
     , buildInput
+    , buildInputEmail
     , buildInputFile
     , buildInputNumber
     , buildInputPassword
     , buildInputText
-    , buildInputEmail
     , buildSelect
     , buildTextArea
     , checkBoxSurround
@@ -26,40 +28,8 @@ module Form exposing
     , inputSurround
     , inputTextStyle
     , labelizedInput
-    , DateBetween(..), DateMsg(..)
+    , monthToInt
     )
-
-{-|
-
-@docs CommonParams
-@docs FullInputType
-@docs InputCheckboxContent
-@docs InputNumberContent
-@docs InputTextContent
-@docs InputType
-@docs buildCheckbox
-@docs buildDate
-@docs buildInput
-@docs buildInputFile
-@docs buildInputNumber
-@docs buildInputPassword
-@docs buildInputText
-@docs buildInputEmail
-@docs buildSelect
-@docs buildTextArea
-@docs checkBoxSurround
-@docs errorMessage
-@docs generateOptions
-@docs inputField
-@docs inputLabel
-@docs inputLabelPlaceholder
-@docs inputLabelPlaceholderWithError
-@docs inputLabelWithError
-@docs inputSurround
-@docs inputTextStyle
-@docs labelizedInput
-
--}
 
 import BodyBuilder as B exposing (FlexItem, NodeWithStyle)
 import BodyBuilder.Attributes as A

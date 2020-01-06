@@ -22,34 +22,53 @@ import Elegant.Outline as Outline
 import Elegant.Padding as Padding
 import Elegant.Typography as Typography
 import Form exposing (..)
+import Graphql.Http exposing (..)
+import Graphql.Http.GraphqlError
+import Graphql.Operation exposing (RootMutation)
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import List.Extra exposing (..)
 import Modifiers exposing (..)
+import PortfolioPerformance.InputObject as InputObject
+import PortfolioPerformance.Mutation as Mutation
+import PortfolioPerformance.Object as Object
+import PortfolioPerformance.Object.Allocation as Allocation
+import PortfolioPerformance.Object.PortfolioState as PortfolioState
+import RemoteData exposing (RemoteData)
 import Task
 import Time
 import Url
-import Utils exposing (findBy, gray, intToMonth, textToHtml)
+import Utils exposing (findBy, gray, intToMonth, normalizeIntForDate, textToHtml)
 
 
 type alias Model =
-    { inputs : Inputs
+    { inputs : InputObject.PortfolioStateInputType
     , key : Nav.Key
     , url : Url.Url
     , zone : Time.Zone
     , dateNow : DateTime.DateTime
+    , startDateInput : Maybe DateTime.DateTime
+    , finalBalance : Maybe Int
     }
 
 
-type alias Inputs =
-    { startDate : Maybe DateTime.DateTime
-    , initialBalance : Int
-    , allocations : List Allocation
+
+-- type alias Inputs =
+--     { startDate : Maybe DateTime.DateTime
+--     , initialBalance : Int
+--     , allocations : List Allocation
+--     }
+
+
+type alias PortfolioResult =
+    { final_balance : Int
     }
 
 
-type alias Allocation =
-    { symbol : String
-    , percentage : Int
-    }
+
+-- type alias Allocation =
+--     { symbol : String
+--     , percentage : Int
+--     }
 
 
 type Msg
@@ -63,6 +82,7 @@ type Msg
     | ChangePercentage Int Int
     | AddAllocation
     | CalculateValueToday
+    | GotPortfolio (RemoteData (Graphql.Http.Error (Maybe PortfolioResult)) (Maybe PortfolioResult))
 
 
 homeView : Model -> Document Msg
@@ -94,11 +114,11 @@ view model =
             ]
             ([ buildInputNumber
                 (inputLabelPlaceholder "Initial Balance" "1337")
-                model.inputs.initialBalance
+                model.inputs.initial_balance
                 ChangeInitialBalance
              , buildDate
                 (inputLabelPlaceholder "Start Date" "2013-03-20")
-                model.inputs.startDate
+                model.startDateInput
                 (DateBetween (fromPosix (Time.millisToPosix 0)) model.dateNow)
                 ChangeStartDate
              ]
@@ -125,16 +145,40 @@ view model =
                                     [ div [] [ text ("Make sure to have 100 percents in total : " ++ String.fromInt i ++ "%") ] ]
                            )
                    )
+                ++ (case model.finalBalance of
+                        Just finalBalance ->
+                            [ div [] [ text ("Final Balance : " ++ String.fromInt finalBalance ++ "$") ]
+                            , div []
+                                [ text
+                                    (let
+                                        valueMade =
+                                            finalBalance - model.inputs.initial_balance
+                                     in
+                                     (if valueMade >= 0 then
+                                        "You would have made "
+
+                                      else
+                                        "You would have lost "
+                                     )
+                                        ++ String.fromInt valueMade
+                                        ++ "$"
+                                    )
+                                ]
+                            ]
+
+                        Nothing ->
+                            []
+                   )
             )
         ]
 
 
-buildMutilpleInputText : List Allocation -> List (NodeWithStyle Msg)
+buildMutilpleInputText : List InputObject.AllocationInputType -> List (NodeWithStyle Msg)
 buildMutilpleInputText list =
     List.indexedMap buildSymbolAndPercentage list
 
 
-buildSymbolAndPercentage : Int -> Allocation -> NodeWithStyle Msg
+buildSymbolAndPercentage : Int -> InputObject.AllocationInputType -> NodeWithStyle Msg
 buildSymbolAndPercentage i a =
     div []
         [ buildInputText
@@ -169,7 +213,7 @@ update msg model =
             )
 
         ChangeInitialBalance nb ->
-            ( { model | inputs = { inputs | initialBalance = nb } }
+            ( { model | inputs = { inputs | initial_balance = nb } }
             , Cmd.none
             )
 
@@ -184,26 +228,38 @@ update msg model =
             )
 
         ChangeStartDate dateMsg ->
-            ( case ( model.inputs.startDate, dateMsg ) of
+            ( case ( model.startDateInput, dateMsg ) of
                 ( Just date, Day day ) ->
-                    { model | inputs = { inputs | startDate = DateTime.setDay day date } }
+                    let
+                        newStartDateInput =
+                            DateTime.setDay day date
+                    in
+                    { model | startDateInput = newStartDateInput, inputs = updateStartDateInInputs inputs newStartDateInput }
 
                 ( Just date, Month nb ) ->
                     case intToMonth nb of
                         Just month ->
-                            { model | inputs = { inputs | startDate = DateTime.setMonth month date } }
+                            let
+                                newStartDateInput =
+                                    DateTime.setMonth month date
+                            in
+                            { model | startDateInput = newStartDateInput, inputs = updateStartDateInInputs inputs newStartDateInput }
 
                         Nothing ->
                             model
 
                 ( Just date, Year nb ) ->
-                    { model | inputs = { inputs | startDate = DateTime.setYear nb date } }
+                    let
+                        newStartDateInput =
+                            DateTime.setYear nb date
+                    in
+                    { model | startDateInput = newStartDateInput, inputs = updateStartDateInInputs inputs newStartDateInput }
 
                 ( _, SetDefaultDate ) ->
-                    { model | inputs = { inputs | startDate = DateTime.fromRawParts { day = 20, month = Time.Mar, year = 2013 } { hours = 0, minutes = 0, seconds = 0, milliseconds = 0 } } }
+                    { model | startDateInput = DateTime.fromRawParts { day = 20, month = Time.Mar, year = 2013 } { hours = 0, minutes = 0, seconds = 0, milliseconds = 0 } }
 
                 ( _, RemoveDate ) ->
-                    { model | inputs = { inputs | startDate = Nothing } }
+                    { model | startDateInput = Nothing }
 
                 _ ->
                     model
@@ -221,10 +277,62 @@ update msg model =
             )
 
         AddAllocation ->
-            ( { model | inputs = { inputs | allocations = inputs.allocations ++ [ Allocation "" 0 ] } }, Cmd.none )
+            ( { model | inputs = { inputs | allocations = inputs.allocations ++ [ InputObject.AllocationInputType "" 0 ] } }, Cmd.none )
 
         CalculateValueToday ->
-            ( model, Cmd.none )
+            ( model
+            , createPortfolioState model.inputs
+            )
+
+        GotPortfolio receiveData ->
+            case receiveData of
+                RemoteData.Success maybePortfolioResult ->
+                    case maybePortfolioResult of
+                        Just portfolioResult ->
+                            ( { model | finalBalance = Just portfolioResult.final_balance }, Cmd.none )
+
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+
+updateStartDateInInputs : InputObject.PortfolioStateInputType -> Maybe DateTime.DateTime -> InputObject.PortfolioStateInputType
+updateStartDateInInputs inputs maybeStartDateInput =
+    case maybeStartDateInput of
+        Just startDateInput ->
+            { inputs | start_date = stringFromDatetime startDateInput }
+
+        Nothing ->
+            inputs
+
+
+stringFromDatetime : DateTime.DateTime -> String
+stringFromDatetime date =
+    ((date |> DateTime.getYear) |> String.fromInt)
+        ++ "-"
+        ++ ((date |> DateTime.getMonth) |> monthToInt |> String.fromInt |> normalizeIntForDate)
+        ++ "-"
+        ++ ((date |> DateTime.getDay) |> String.fromInt |> normalizeIntForDate)
+
+
+createPortfolioState : InputObject.PortfolioStateInputType -> Cmd Msg
+createPortfolioState inputs =
+    sendPortfolioState inputs
+        |> Graphql.Http.mutationRequest endPoint
+        |> Graphql.Http.send (RemoteData.fromResult >> GotPortfolio)
+
+
+sendPortfolioState : InputObject.PortfolioStateInputType -> SelectionSet (Maybe PortfolioResult) RootMutation
+sendPortfolioState inputs =
+    Mutation.create_portfolio_state { portfolio_state = inputs } portfolioResultSelector
+
+
+portfolioResultSelector : SelectionSet PortfolioResult Object.PortfolioState
+portfolioResultSelector =
+    SelectionSet.map PortfolioResult
+        PortfolioState.final_balance
 
 
 subscriptions : Model -> Sub Msg
@@ -236,11 +344,11 @@ subscriptions model =
 -- , publishedAt = Just <| Time.millisToPosix 1502323200
 
 
-initInputs : Nav.Key -> Inputs
+initInputs : Nav.Key -> InputObject.PortfolioStateInputType
 initInputs key =
-    { startDate = Nothing
-    , initialBalance = 0
-    , allocations = [ Allocation "" 0 ]
+    { start_date = "2013-03-20"
+    , initial_balance = 0
+    , allocations = [ InputObject.AllocationInputType "" 0 ]
     }
 
 
@@ -251,6 +359,8 @@ init flags url key =
       , url = url
       , zone = Time.utc
       , dateNow = fromPosix <| Time.millisToPosix 0
+      , startDateInput = Nothing
+      , finalBalance = Nothing
       }
     , Cmd.batch [ Task.perform AdjustTimeZone Time.here, Task.perform GetTime Time.now ]
     )
@@ -266,3 +376,8 @@ main =
         , subscriptions = subscriptions
         , view = homeView
         }
+
+
+endPoint : String
+endPoint =
+    "http://localhost:3000/graphql"
