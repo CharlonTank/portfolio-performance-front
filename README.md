@@ -1,6 +1,7 @@
 This is the front that comes with portfolio-performance-api
 
 ---------------------------------------------------
+initial thoughts before coding :
 
 MVP ->
 
@@ -50,6 +51,7 @@ database :
 
 portfolio_state
     total : Integer
+    start_date : DateTime
     rebalance_status : Integer (No Monthly Yearly)
     token : String (Uniq)
 
@@ -68,3 +70,4 @@ url?token=<token>
 -> get portfolio state where token is <token>
 -> fill inputs
 -> maybe launch the calculation direcly without user inputs
+
