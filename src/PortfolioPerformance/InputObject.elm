@@ -44,16 +44,26 @@ encodeAllocationInputType input =
         [ ( "symbol", Encode.string input.symbol |> Just ), ( "percentage", Encode.int input.percentage |> Just ) ]
 
 
-buildPortfolioStateInputType : PortfolioStateInputTypeRequiredFields -> PortfolioStateInputType
-buildPortfolioStateInputType required =
-    { allocations = required.allocations, initial_balance = required.initial_balance, start_date = required.start_date }
+buildPortfolioStateInputType : PortfolioStateInputTypeRequiredFields -> (PortfolioStateInputTypeOptionalFields -> PortfolioStateInputTypeOptionalFields) -> PortfolioStateInputType
+buildPortfolioStateInputType required fillOptionals =
+    let
+        optionals =
+            fillOptionals
+                { token = Absent }
+    in
+    { allocations = required.allocations, initial_balance = required.initial_balance, start_date = required.start_date, save = required.save, token = optionals.token }
 
 
 type alias PortfolioStateInputTypeRequiredFields =
     { allocations : List AllocationInputType
     , initial_balance : Int
     , start_date : String
+    , save : Bool
     }
+
+
+type alias PortfolioStateInputTypeOptionalFields =
+    { token : OptionalArgument String }
 
 
 {-| Type for the PortfolioStateInputType input object.
@@ -62,6 +72,8 @@ type alias PortfolioStateInputType =
     { allocations : List AllocationInputType
     , initial_balance : Int
     , start_date : String
+    , save : Bool
+    , token : OptionalArgument String
     }
 
 
@@ -70,7 +82,7 @@ type alias PortfolioStateInputType =
 encodePortfolioStateInputType : PortfolioStateInputType -> Value
 encodePortfolioStateInputType input =
     Encode.maybeObject
-        [ ( "allocations", (encodeAllocationInputType |> Encode.list) input.allocations |> Just ), ( "initial_balance", Encode.int input.initial_balance |> Just ), ( "start_date", Encode.string input.start_date |> Just ) ]
+        [ ( "allocations", (encodeAllocationInputType |> Encode.list) input.allocations |> Just ), ( "initial_balance", Encode.int input.initial_balance |> Just ), ( "start_date", Encode.string input.start_date |> Just ), ( "save", Encode.bool input.save |> Just ), ( "token", Encode.string |> Encode.optional input.token ) ]
 
 
 buildSubscribedQueryInputType : (SubscribedQueryInputTypeOptionalFields -> SubscribedQueryInputTypeOptionalFields) -> SubscribedQueryInputType

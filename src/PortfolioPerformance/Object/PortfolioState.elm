@@ -32,3 +32,8 @@ final_balance =
 id : SelectionSet String PortfolioPerformance.Object.PortfolioState
 id =
     Object.selectionForField "String" "id" [] Decode.string
+
+
+token : SelectionSet (Maybe String) PortfolioPerformance.Object.PortfolioState
+token =
+    Object.selectionForField "(Maybe String)" "token" [] (Decode.string |> Decode.nullable)

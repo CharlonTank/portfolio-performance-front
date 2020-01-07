@@ -25,6 +25,7 @@ import Form exposing (..)
 import Graphql.Http exposing (..)
 import Graphql.Http.GraphqlError
 import Graphql.Operation exposing (RootMutation)
+import Graphql.OptionalArgument exposing (..)
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import List.Extra exposing (..)
 import Modifiers exposing (..)
@@ -45,7 +46,6 @@ type alias Model =
     { inputs : InputObject.PortfolioStateInputType
     , key : Nav.Key
     , url : Url.Url
-    , zone : Time.Zone
     , dateNow : DateTime.DateTime
     , startDateInput : Maybe DateTime.DateTime
     , portfolioResult : Maybe PortfolioResult
@@ -64,6 +64,7 @@ type alias Model =
 type alias PortfolioResult =
     { finalBalance : Int
     , allocations : List AllocationResult
+    , token : Maybe String
     }
 
 
@@ -85,7 +86,6 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | ChangeInitialBalance Int
     | ChangeStartDate DateMsg
-    | AdjustTimeZone Time.Zone
     | GetTime Time.Posix
     | ChangeSymbol Int String
     | ChangePercentage Int Int
@@ -147,7 +147,7 @@ view model =
                                         , border = Color.black
                                         , text = Color.black
                                         }
-                                        "Click here to value you balance today"
+                                        "Click here to value you balance today and save it"
                                         CalculateValueToday
                                     ]
 
@@ -165,6 +165,12 @@ view model =
                                 }
                                 "Toggle mutualization"
                                 ToggleMutualization
+                            , case portfolioResult.token of
+                                Just token ->
+                                    text ("Your portfolio is saved at this url : " ++ frontendEndPoint ++ token)
+
+                                Nothing ->
+                                    div [] []
                             ]
 
                         Nothing ->
@@ -273,11 +279,6 @@ update msg model =
             , Cmd.none
             )
 
-        AdjustTimeZone newZone ->
-            ( { model | zone = newZone }
-            , Cmd.none
-            )
-
         GetTime time ->
             ( { model | dateNow = fromPosix time }
             , Cmd.none
@@ -337,7 +338,7 @@ update msg model =
 
         CalculateValueToday ->
             ( model
-            , createPortfolioState model.inputs
+            , createPortfolioState { inputs | save = True }
             )
 
         GotPortfolio receiveData ->
@@ -345,7 +346,21 @@ update msg model =
                 RemoteData.Success maybePortfolioResult ->
                     case maybePortfolioResult of
                         Just portfolioResult ->
-                            ( { model | portfolioResult = Just portfolioResult }, Cmd.none )
+                            ( { model
+                                | portfolioResult = Just portfolioResult
+                                , inputs =
+                                    { inputs
+                                        | token =
+                                            case portfolioResult.token of
+                                                Just token ->
+                                                    Present token
+
+                                                Nothing ->
+                                                    Absent
+                                    }
+                              }
+                            , Cmd.none
+                            )
 
                         Nothing ->
                             ( model, Cmd.none )
@@ -379,7 +394,7 @@ stringFromDatetime date =
 createPortfolioState : InputObject.PortfolioStateInputType -> Cmd Msg
 createPortfolioState inputs =
     sendPortfolioState inputs
-        |> Graphql.Http.mutationRequest endPoint
+        |> Graphql.Http.mutationRequest (backendEndPoint ++ "graphql")
         |> Graphql.Http.send (RemoteData.fromResult >> GotPortfolio)
 
 
@@ -390,9 +405,10 @@ sendPortfolioState inputs =
 
 portfolioResultSelector : SelectionSet PortfolioResult Object.PortfolioState
 portfolioResultSelector =
-    SelectionSet.map2 PortfolioResult
+    SelectionSet.map3 PortfolioResult
         PortfolioState.final_balance
         (PortfolioState.allocations allocationSelector)
+        PortfolioState.token
 
 
 allocationSelector : SelectionSet AllocationResult Object.Allocation
@@ -424,6 +440,8 @@ initInputs key =
     { start_date = "2013-03-20"
     , initial_balance = 0
     , allocations = [ InputObject.AllocationInputType "" 0 ]
+    , save = False
+    , token = Absent
     }
 
 
@@ -432,14 +450,22 @@ init flags url key =
     ( { inputs = initInputs key
       , key = key
       , url = url
-      , zone = Time.utc
       , dateNow = fromPosix <| Time.millisToPosix 0
       , startDateInput = Nothing
       , portfolioResult = Nothing
       , mutualization = True
       }
-    , Cmd.batch [ Task.perform AdjustTimeZone Time.here, Task.perform GetTime Time.now ]
+    , Cmd.batch [ Task.perform GetTime Time.now ]
     )
+
+
+getToken : String -> Maybe String
+getToken path =
+    if String.length path > 10 then
+        Just (String.dropLeft 1 path)
+
+    else
+        Nothing
 
 
 main : Program () Model Msg
@@ -454,6 +480,11 @@ main =
         }
 
 
-endPoint : String
-endPoint =
-    "http://localhost:3000/graphql"
+backendEndPoint : String
+backendEndPoint =
+    "http://localhost:3000/"
+
+
+frontendEndPoint : String
+frontendEndPoint =
+    "http://localhost:8000/"
