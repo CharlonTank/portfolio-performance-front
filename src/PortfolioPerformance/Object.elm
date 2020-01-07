@@ -13,6 +13,10 @@ type PortfolioState
     = PortfolioState
 
 
+type PricePerTime
+    = PricePerTime
+
+
 type SubscribedQuery
     = SubscribedQuery
 

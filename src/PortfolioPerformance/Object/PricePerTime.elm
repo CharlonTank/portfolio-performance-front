@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module PortfolioPerformance.Object.PortfolioState exposing (..)
+module PortfolioPerformance.Object.PricePerTime exposing (..)
 
 import Graphql.Internal.Builder.Argument as Argument exposing (Argument)
 import Graphql.Internal.Builder.Object as Object
@@ -19,16 +19,11 @@ import PortfolioPerformance.ScalarCodecs
 import PortfolioPerformance.Union
 
 
-allocations : SelectionSet decodesTo PortfolioPerformance.Object.Allocation -> SelectionSet (List decodesTo) PortfolioPerformance.Object.PortfolioState
-allocations object_ =
-    Object.selectionForCompositeField "allocations" [] object_ (identity >> Decode.list)
+time : SelectionSet String PortfolioPerformance.Object.PricePerTime
+time =
+    Object.selectionForField "String" "time" [] Decode.string
 
 
-final_balance : SelectionSet Int PortfolioPerformance.Object.PortfolioState
-final_balance =
-    Object.selectionForField "Int" "final_balance" [] Decode.int
-
-
-id : SelectionSet String PortfolioPerformance.Object.PortfolioState
-id =
-    Object.selectionForField "String" "id" [] Decode.string
+value : SelectionSet Float PortfolioPerformance.Object.PricePerTime
+value =
+    Object.selectionForField "Float" "value" [] Decode.float

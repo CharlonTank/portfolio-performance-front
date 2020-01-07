@@ -19,24 +19,14 @@ import PortfolioPerformance.ScalarCodecs
 import PortfolioPerformance.Union
 
 
-id : SelectionSet String PortfolioPerformance.Object.Allocation
-id =
-    Object.selectionForField "String" "id" [] Decode.string
-
-
 percentage : SelectionSet Int PortfolioPerformance.Object.Allocation
 percentage =
     Object.selectionForField "Int" "percentage" [] Decode.int
 
 
-portfolio_state : SelectionSet decodesTo PortfolioPerformance.Object.PortfolioState -> SelectionSet (Maybe decodesTo) PortfolioPerformance.Object.Allocation
-portfolio_state object_ =
-    Object.selectionForCompositeField "portfolio_state" [] object_ (identity >> Decode.nullable)
-
-
-portfolio_state_id : SelectionSet String PortfolioPerformance.Object.Allocation
-portfolio_state_id =
-    Object.selectionForField "String" "portfolio_state_id" [] Decode.string
+price_per_times : SelectionSet decodesTo PortfolioPerformance.Object.PricePerTime -> SelectionSet (List decodesTo) PortfolioPerformance.Object.Allocation
+price_per_times object_ =
+    Object.selectionForCompositeField "price_per_times" [] object_ (identity >> Decode.list)
 
 
 symbol : SelectionSet String PortfolioPerformance.Object.Allocation

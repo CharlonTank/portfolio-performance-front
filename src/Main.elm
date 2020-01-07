@@ -33,6 +33,7 @@ import PortfolioPerformance.Mutation as Mutation
 import PortfolioPerformance.Object as Object
 import PortfolioPerformance.Object.Allocation as Allocation
 import PortfolioPerformance.Object.PortfolioState as PortfolioState
+import PortfolioPerformance.Object.PricePerTime as PricePerTime
 import RemoteData exposing (RemoteData)
 import Task
 import Time
@@ -47,7 +48,8 @@ type alias Model =
     , zone : Time.Zone
     , dateNow : DateTime.DateTime
     , startDateInput : Maybe DateTime.DateTime
-    , finalBalance : Maybe Int
+    , portfolioResult : Maybe PortfolioResult
+    , mutualization : Bool
     }
 
 
@@ -60,15 +62,22 @@ type alias Model =
 
 
 type alias PortfolioResult =
-    { final_balance : Int
+    { finalBalance : Int
+    , allocations : List AllocationResult
     }
 
 
+type alias AllocationResult =
+    { symbol : String
+    , percentage : Int
+    , price_per_times : List PricePerTime
+    }
 
--- type alias Allocation =
---     { symbol : String
---     , percentage : Int
---     }
+
+type alias PricePerTime =
+    { price : Float
+    , time : String
+    }
 
 
 type Msg
@@ -83,6 +92,7 @@ type Msg
     | AddAllocation
     | CalculateValueToday
     | GotPortfolio (RemoteData (Graphql.Http.Error (Maybe PortfolioResult)) (Maybe PortfolioResult))
+    | ToggleMutualization
 
 
 homeView : Model -> Document Msg
@@ -145,31 +155,77 @@ view model =
                                     [ div [] [ text ("Make sure to have 100 percents in total : " ++ String.fromInt i ++ "%") ] ]
                            )
                    )
-                ++ (case model.finalBalance of
-                        Just finalBalance ->
-                            [ div [] [ text ("Final Balance : " ++ String.fromInt finalBalance ++ "$") ]
-                            , div []
-                                [ text
-                                    (let
-                                        valueMade =
-                                            finalBalance - model.inputs.initial_balance
-                                     in
-                                     (if valueMade >= 0 then
-                                        "You would have made "
-
-                                      else
-                                        "You would have lost "
-                                     )
-                                        ++ String.fromInt valueMade
-                                        ++ "$"
-                                    )
-                                ]
+                ++ (case model.portfolioResult of
+                        Just portfolioResult ->
+                            [ showPortfolioResult model.inputs.initial_balance portfolioResult model.mutualization
+                            , monochromeSquaredButton
+                                { background = Color.white
+                                , border = Color.black
+                                , text = Color.black
+                                }
+                                "Toggle mutualization"
+                                ToggleMutualization
                             ]
 
                         Nothing ->
                             []
                    )
             )
+        ]
+
+
+showPortfolioResult : Int -> PortfolioResult -> Bool -> NodeWithStyle Msg
+showPortfolioResult initialBalance portfolioResult mutualization =
+    if mutualization then
+        div []
+            [ div [] [ text ("Final Balance : " ++ String.fromInt portfolioResult.finalBalance ++ "$") ]
+            , div []
+                [ text
+                    (let
+                        valueMade =
+                            portfolioResult.finalBalance - initialBalance
+                     in
+                     (if valueMade >= 0 then
+                        "You would have made "
+
+                      else
+                        "You would have lost "
+                     )
+                        ++ String.fromInt valueMade
+                        ++ "$"
+                    )
+                ]
+            ]
+
+    else
+        div []
+            (List.map (showAllocationResult initialBalance) portfolioResult.allocations)
+
+
+showAllocationResult : Int -> AllocationResult -> NodeWithStyle Msg
+showAllocationResult initialBalance allocation =
+    let
+        ratio =
+            case ( List.Extra.last allocation.price_per_times, List.head allocation.price_per_times ) of
+                ( Just last, Just first ) ->
+                    first.price / last.price
+
+                _ ->
+                    1
+
+        initialAllocationBalance =
+            toFloat (initialBalance * allocation.percentage) / 100
+
+        finaAllocationBalance =
+            ratio * initialAllocationBalance
+    in
+    div []
+        [ div []
+            [ text ("Symbol : " ++ allocation.symbol) ]
+        , div []
+            [ text ("Initial balance : " ++ String.fromFloat initialAllocationBalance) ]
+        , div []
+            [ text ("Final balance : " ++ String.fromFloat finaAllocationBalance) ]
         ]
 
 
@@ -289,13 +345,16 @@ update msg model =
                 RemoteData.Success maybePortfolioResult ->
                     case maybePortfolioResult of
                         Just portfolioResult ->
-                            ( { model | finalBalance = Just portfolioResult.final_balance }, Cmd.none )
+                            ( { model | portfolioResult = Just portfolioResult }, Cmd.none )
 
                         Nothing ->
                             ( model, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
+
+        ToggleMutualization ->
+            ( { model | mutualization = not model.mutualization }, Cmd.none )
 
 
 updateStartDateInInputs : InputObject.PortfolioStateInputType -> Maybe DateTime.DateTime -> InputObject.PortfolioStateInputType
@@ -331,8 +390,24 @@ sendPortfolioState inputs =
 
 portfolioResultSelector : SelectionSet PortfolioResult Object.PortfolioState
 portfolioResultSelector =
-    SelectionSet.map PortfolioResult
+    SelectionSet.map2 PortfolioResult
         PortfolioState.final_balance
+        (PortfolioState.allocations allocationSelector)
+
+
+allocationSelector : SelectionSet AllocationResult Object.Allocation
+allocationSelector =
+    SelectionSet.map3 AllocationResult
+        Allocation.symbol
+        Allocation.percentage
+        (Allocation.price_per_times pricePerTimeSelector)
+
+
+pricePerTimeSelector : SelectionSet PricePerTime Object.PricePerTime
+pricePerTimeSelector =
+    SelectionSet.map2 PricePerTime
+        PricePerTime.value
+        PricePerTime.time
 
 
 subscriptions : Model -> Sub Msg
@@ -360,7 +435,8 @@ init flags url key =
       , zone = Time.utc
       , dateNow = fromPosix <| Time.millisToPosix 0
       , startDateInput = Nothing
-      , finalBalance = Nothing
+      , portfolioResult = Nothing
+      , mutualization = True
       }
     , Cmd.batch [ Task.perform AdjustTimeZone Time.here, Task.perform GetTime Time.now ]
     )

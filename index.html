@@ -14255,6 +14255,7 @@ var $author$project$Form$DateBetween = F2(
 	function (a, b) {
 		return {$: 'DateBetween', a: a, b: b};
 	});
+var $author$project$Main$ToggleMutualization = {$: 'ToggleMutualization'};
 var $elm_athlete$athlete$Color$RGBA = F4(
 	function (a, b, c, d) {
 		return {$: 'RGBA', a: a, b: b, c: c, d: d};
@@ -16370,6 +16371,104 @@ var $elm$time$Time$Posix = function (a) {
 	return {$: 'Posix', a: a};
 };
 var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
+var $elm_community$list_extra$List$Extra$last = function (items) {
+	last:
+	while (true) {
+		if (!items.b) {
+			return $elm$core$Maybe$Nothing;
+		} else {
+			if (!items.b.b) {
+				var x = items.a;
+				return $elm$core$Maybe$Just(x);
+			} else {
+				var rest = items.b;
+				var $temp$items = rest;
+				items = $temp$items;
+				continue last;
+			}
+		}
+	}
+};
+var $author$project$Main$showAllocationResult = F2(
+	function (initialBalance, allocation) {
+		var ratio = function () {
+			var _v0 = _Utils_Tuple2(
+				$elm_community$list_extra$List$Extra$last(allocation.price_per_times),
+				$elm$core$List$head(allocation.price_per_times));
+			if ((_v0.a.$ === 'Just') && (_v0.b.$ === 'Just')) {
+				var last = _v0.a.a;
+				var first = _v0.b.a;
+				return first.price / last.price;
+			} else {
+				return 1;
+			}
+		}();
+		var initialAllocationBalance = (initialBalance * allocation.percentage) / 100;
+		var finaAllocationBalance = ratio * initialAllocationBalance;
+		return A2(
+			$elm_athlete$athlete$BodyBuilder$div,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					$elm_athlete$athlete$BodyBuilder$div,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm_athlete$athlete$BodyBuilder$text('Symbol : ' + allocation.symbol)
+						])),
+					A2(
+					$elm_athlete$athlete$BodyBuilder$div,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm_athlete$athlete$BodyBuilder$text(
+							'Initial balance : ' + $elm$core$String$fromFloat(initialAllocationBalance))
+						])),
+					A2(
+					$elm_athlete$athlete$BodyBuilder$div,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm_athlete$athlete$BodyBuilder$text(
+							'Final balance : ' + $elm$core$String$fromFloat(finaAllocationBalance))
+						]))
+				]));
+	});
+var $author$project$Main$showPortfolioResult = F3(
+	function (initialBalance, portfolioResult, mutualization) {
+		return mutualization ? A2(
+			$elm_athlete$athlete$BodyBuilder$div,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					$elm_athlete$athlete$BodyBuilder$div,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm_athlete$athlete$BodyBuilder$text(
+							'Final Balance : ' + ($elm$core$String$fromInt(portfolioResult.finalBalance) + '$'))
+						])),
+					A2(
+					$elm_athlete$athlete$BodyBuilder$div,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm_athlete$athlete$BodyBuilder$text(
+							function () {
+								var valueMade = portfolioResult.finalBalance - initialBalance;
+								return ((valueMade >= 0) ? 'You would have made ' : 'You would have lost ') + ($elm$core$String$fromInt(valueMade) + '$');
+							}())
+						]))
+				])) : A2(
+			$elm_athlete$athlete$BodyBuilder$div,
+			_List_Nil,
+			A2(
+				$elm$core$List$map,
+				$author$project$Main$showAllocationResult(initialBalance),
+				portfolioResult.allocations));
+	});
 var $author$project$Main$view = function (model) {
 	return A2(
 		$elm_athlete$athlete$BodyBuilder$node,
@@ -16459,30 +16558,17 @@ var $author$project$Main$view = function (model) {
 									}
 								}()),
 							function () {
-								var _v1 = model.finalBalance;
+								var _v1 = model.portfolioResult;
 								if (_v1.$ === 'Just') {
-									var finalBalance = _v1.a;
+									var portfolioResult = _v1.a;
 									return _List_fromArray(
 										[
-											A2(
-											$elm_athlete$athlete$BodyBuilder$div,
-											_List_Nil,
-											_List_fromArray(
-												[
-													$elm_athlete$athlete$BodyBuilder$text(
-													'Final Balance : ' + ($elm$core$String$fromInt(finalBalance) + '$'))
-												])),
-											A2(
-											$elm_athlete$athlete$BodyBuilder$div,
-											_List_Nil,
-											_List_fromArray(
-												[
-													$elm_athlete$athlete$BodyBuilder$text(
-													function () {
-														var valueMade = finalBalance - model.inputs.initial_balance;
-														return ((valueMade >= 0) ? 'You would have made ' : 'You would have lost ') + ($elm$core$String$fromInt(valueMade) + '$');
-													}())
-												]))
+											A3($author$project$Main$showPortfolioResult, model.inputs.initial_balance, portfolioResult, model.mutualization),
+											A3(
+											$elm_athlete$athlete$BodyBuilder$Elements$Clickable$monochromeSquaredButton,
+											{background: $elm_athlete$athlete$Color$white, border: $elm_athlete$athlete$Color$black, text: $elm_athlete$athlete$Color$black},
+											'Toggle mutualization',
+											$author$project$Main$ToggleMutualization)
 										]);
 								} else {
 									return _List_Nil;
@@ -16557,9 +16643,10 @@ var $author$project$Main$init = F3(
 			{
 				dateNow: $PanagiotisGeorgiadis$elm_datetime$DateTime$fromPosix(
 					$elm$time$Time$millisToPosix(0)),
-				finalBalance: $elm$core$Maybe$Nothing,
 				inputs: $author$project$Main$initInputs(key),
 				key: key,
+				mutualization: true,
+				portfolioResult: $elm$core$Maybe$Nothing,
 				startDateInput: $elm$core$Maybe$Nothing,
 				url: url,
 				zone: $elm$time$Time$utc
@@ -17687,9 +17774,29 @@ var $author$project$PortfolioPerformance$Mutation$create_portfolio_state = F2(
 			object_,
 			A2($elm$core$Basics$composeR, $elm$core$Basics$identity, $elm$json$Json$Decode$nullable));
 	});
-var $author$project$Main$PortfolioResult = function (final_balance) {
-	return {final_balance: final_balance};
-};
+var $author$project$Main$PortfolioResult = F2(
+	function (finalBalance, allocations) {
+		return {allocations: allocations, finalBalance: finalBalance};
+	});
+var $author$project$Main$AllocationResult = F3(
+	function (symbol, percentage, price_per_times) {
+		return {percentage: percentage, price_per_times: price_per_times, symbol: symbol};
+	});
+var $dillonkearns$elm_graphql$Graphql$SelectionSet$map3 = F4(
+	function (combine, _v0, _v1, _v2) {
+		var selectionFields1 = _v0.a;
+		var selectionDecoder1 = _v0.b;
+		var selectionFields2 = _v1.a;
+		var selectionDecoder2 = _v1.b;
+		var selectionFields3 = _v2.a;
+		var selectionDecoder3 = _v2.b;
+		return A2(
+			$dillonkearns$elm_graphql$Graphql$SelectionSet$SelectionSet,
+			$elm$core$List$concat(
+				_List_fromArray(
+					[selectionFields1, selectionFields2, selectionFields3])),
+			A4($elm$json$Json$Decode$map3, combine, selectionDecoder1, selectionDecoder2, selectionDecoder3));
+	});
 var $dillonkearns$elm_graphql$Graphql$Internal$Builder$Object$leaf = F2(
 	function (details, args) {
 		return A2($dillonkearns$elm_graphql$Graphql$RawField$Leaf, details, args);
@@ -17709,17 +17816,54 @@ var $dillonkearns$elm_graphql$Graphql$Internal$Builder$Object$selectionForField 
 				$dillonkearns$elm_graphql$Graphql$Document$Field$hashedAliasName(newLeaf),
 				decoder));
 	});
-var $author$project$PortfolioPerformance$Object$PortfolioState$final_balance = A4($dillonkearns$elm_graphql$Graphql$Internal$Builder$Object$selectionForField, 'Int', 'final_balance', _List_Nil, $elm$json$Json$Decode$int);
-var $dillonkearns$elm_graphql$Graphql$SelectionSet$map = F2(
-	function (mapFunction, _v0) {
-		var selectionFields = _v0.a;
-		var selectionDecoder = _v0.b;
+var $author$project$PortfolioPerformance$Object$Allocation$percentage = A4($dillonkearns$elm_graphql$Graphql$Internal$Builder$Object$selectionForField, 'Int', 'percentage', _List_Nil, $elm$json$Json$Decode$int);
+var $author$project$Main$PricePerTime = F2(
+	function (price, time) {
+		return {price: price, time: time};
+	});
+var $dillonkearns$elm_graphql$Graphql$SelectionSet$map2 = F3(
+	function (combine, _v0, _v1) {
+		var selectionFields1 = _v0.a;
+		var selectionDecoder1 = _v0.b;
+		var selectionFields2 = _v1.a;
+		var selectionDecoder2 = _v1.b;
 		return A2(
 			$dillonkearns$elm_graphql$Graphql$SelectionSet$SelectionSet,
-			selectionFields,
-			A2($elm$json$Json$Decode$map, mapFunction, selectionDecoder));
+			_Utils_ap(selectionFields1, selectionFields2),
+			A3($elm$json$Json$Decode$map2, combine, selectionDecoder1, selectionDecoder2));
 	});
-var $author$project$Main$portfolioResultSelector = A2($dillonkearns$elm_graphql$Graphql$SelectionSet$map, $author$project$Main$PortfolioResult, $author$project$PortfolioPerformance$Object$PortfolioState$final_balance);
+var $author$project$PortfolioPerformance$Object$PricePerTime$time = A4($dillonkearns$elm_graphql$Graphql$Internal$Builder$Object$selectionForField, 'String', 'time', _List_Nil, $elm$json$Json$Decode$string);
+var $author$project$PortfolioPerformance$Object$PricePerTime$value = A4($dillonkearns$elm_graphql$Graphql$Internal$Builder$Object$selectionForField, 'Float', 'value', _List_Nil, $elm$json$Json$Decode$float);
+var $author$project$Main$pricePerTimeSelector = A3($dillonkearns$elm_graphql$Graphql$SelectionSet$map2, $author$project$Main$PricePerTime, $author$project$PortfolioPerformance$Object$PricePerTime$value, $author$project$PortfolioPerformance$Object$PricePerTime$time);
+var $author$project$PortfolioPerformance$Object$Allocation$price_per_times = function (object_) {
+	return A4(
+		$dillonkearns$elm_graphql$Graphql$Internal$Builder$Object$selectionForCompositeField,
+		'price_per_times',
+		_List_Nil,
+		object_,
+		A2($elm$core$Basics$composeR, $elm$core$Basics$identity, $elm$json$Json$Decode$list));
+};
+var $author$project$PortfolioPerformance$Object$Allocation$symbol = A4($dillonkearns$elm_graphql$Graphql$Internal$Builder$Object$selectionForField, 'String', 'symbol', _List_Nil, $elm$json$Json$Decode$string);
+var $author$project$Main$allocationSelector = A4(
+	$dillonkearns$elm_graphql$Graphql$SelectionSet$map3,
+	$author$project$Main$AllocationResult,
+	$author$project$PortfolioPerformance$Object$Allocation$symbol,
+	$author$project$PortfolioPerformance$Object$Allocation$percentage,
+	$author$project$PortfolioPerformance$Object$Allocation$price_per_times($author$project$Main$pricePerTimeSelector));
+var $author$project$PortfolioPerformance$Object$PortfolioState$allocations = function (object_) {
+	return A4(
+		$dillonkearns$elm_graphql$Graphql$Internal$Builder$Object$selectionForCompositeField,
+		'allocations',
+		_List_Nil,
+		object_,
+		A2($elm$core$Basics$composeR, $elm$core$Basics$identity, $elm$json$Json$Decode$list));
+};
+var $author$project$PortfolioPerformance$Object$PortfolioState$final_balance = A4($dillonkearns$elm_graphql$Graphql$Internal$Builder$Object$selectionForField, 'Int', 'final_balance', _List_Nil, $elm$json$Json$Decode$int);
+var $author$project$Main$portfolioResultSelector = A3(
+	$dillonkearns$elm_graphql$Graphql$SelectionSet$map2,
+	$author$project$Main$PortfolioResult,
+	$author$project$PortfolioPerformance$Object$PortfolioState$final_balance,
+	$author$project$PortfolioPerformance$Object$PortfolioState$allocations($author$project$Main$allocationSelector));
 var $author$project$Main$sendPortfolioState = function (inputs) {
 	return A2(
 		$author$project$PortfolioPerformance$Mutation$create_portfolio_state,
@@ -18439,7 +18583,7 @@ var $author$project$Main$update = F2(
 				return _Utils_Tuple2(
 					model,
 					$author$project$Main$createPortfolioState(model.inputs));
-			default:
+			case 'GotPortfolio':
 				var receiveData = msg.a;
 				if (receiveData.$ === 'Success') {
 					var maybePortfolioResult = receiveData.a;
@@ -18449,7 +18593,7 @@ var $author$project$Main$update = F2(
 							_Utils_update(
 								model,
 								{
-									finalBalance: $elm$core$Maybe$Just(portfolioResult.final_balance)
+									portfolioResult: $elm$core$Maybe$Just(portfolioResult)
 								}),
 							$elm$core$Platform$Cmd$none);
 					} else {
@@ -18458,6 +18602,12 @@ var $author$project$Main$update = F2(
 				} else {
 					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 				}
+			default:
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{mutualization: !model.mutualization}),
+					$elm$core$Platform$Cmd$none);
 		}
 	});
 var $author$project$Main$main = $elm_athlete$athlete$BodyBuilder$application(
@@ -18476,7 +18626,7 @@ var $author$project$Main$main = $elm_athlete$athlete$BodyBuilder$application(
 		view: $author$project$Main$homeView
 	});
 _Platform_export({'Main':{'init':$author$project$Main$main(
-	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"Main.Msg","aliases":{"Graphql.Http.Error":{"args":["parsedData"],"type":"Graphql.Http.RawError parsedData Graphql.Http.HttpError"},"Main.PortfolioResult":{"args":[],"type":"{ final_balance : Basics.Int }"},"Url.Url":{"args":[],"type":"{ protocol : Url.Protocol, host : String.String, port_ : Maybe.Maybe Basics.Int, path : String.String, query : Maybe.Maybe String.String, fragment : Maybe.Maybe String.String }"},"Time.Era":{"args":[],"type":"{ start : Basics.Int, offset : Basics.Int }"},"Graphql.Http.GraphqlError.GraphqlError":{"args":[],"type":"{ message : String.String, locations : Maybe.Maybe (List.List Graphql.Http.GraphqlError.Location), details : Dict.Dict String.String Json.Decode.Value }"},"Graphql.Http.GraphqlError.Location":{"args":[],"type":"{ line : Basics.Int, column : Basics.Int }"},"Http.Metadata":{"args":[],"type":"{ url : String.String, statusCode : Basics.Int, statusText : String.String, headers : Dict.Dict String.String String.String }"},"Json.Decode.Value":{"args":[],"type":"Json.Encode.Value"}},"unions":{"Main.Msg":{"args":[],"tags":{"UrlChanged":["Url.Url"],"LinkClicked":["Browser.UrlRequest"],"ChangeInitialBalance":["Basics.Int"],"ChangeStartDate":["Form.DateMsg"],"AdjustTimeZone":["Time.Zone"],"GetTime":["Time.Posix"],"ChangeSymbol":["Basics.Int","String.String"],"ChangePercentage":["Basics.Int","Basics.Int"],"AddAllocation":[],"CalculateValueToday":[],"GotPortfolio":["RemoteData.RemoteData (Graphql.Http.Error (Maybe.Maybe Main.PortfolioResult)) (Maybe.Maybe Main.PortfolioResult)"]}},"Form.DateMsg":{"args":[],"tags":{"Day":["Basics.Int"],"Month":["Basics.Int"],"Year":["Basics.Int"],"SetDefaultDate":[],"RemoveDate":[]}},"Graphql.Http.HttpError":{"args":[],"tags":{"BadUrl":["String.String"],"Timeout":[],"NetworkError":[],"BadStatus":["Http.Metadata","String.String"],"BadPayload":["Json.Decode.Error"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Time.Posix":{"args":[],"tags":{"Posix":["Basics.Int"]}},"Url.Protocol":{"args":[],"tags":{"Http":[],"Https":[]}},"Graphql.Http.RawError":{"args":["parsedData","httpError"],"tags":{"GraphqlError":["Graphql.Http.GraphqlError.PossiblyParsedData parsedData","List.List Graphql.Http.GraphqlError.GraphqlError"],"HttpError":["httpError"]}},"RemoteData.RemoteData":{"args":["e","a"],"tags":{"NotAsked":[],"Loading":[],"Failure":["e"],"Success":["a"]}},"String.String":{"args":[],"tags":{"String":[]}},"Browser.UrlRequest":{"args":[],"tags":{"Internal":["Url.Url"],"External":["String.String"]}},"Time.Zone":{"args":[],"tags":{"Zone":["Basics.Int","List.List Time.Era"]}},"Dict.Dict":{"args":["k","v"],"tags":{"RBNode_elm_builtin":["Dict.NColor","k","v","Dict.Dict k v","Dict.Dict k v"],"RBEmpty_elm_builtin":[]}},"Json.Decode.Error":{"args":[],"tags":{"Field":["String.String","Json.Decode.Error"],"Index":["Basics.Int","Json.Decode.Error"],"OneOf":["List.List Json.Decode.Error"],"Failure":["String.String","Json.Decode.Value"]}},"List.List":{"args":["a"],"tags":{}},"Graphql.Http.GraphqlError.PossiblyParsedData":{"args":["parsed"],"tags":{"ParsedData":["parsed"],"UnparsedData":["Json.Decode.Value"]}},"Json.Encode.Value":{"args":[],"tags":{"Value":[]}},"Dict.NColor":{"args":[],"tags":{"Red":[],"Black":[]}}}}})}});}(this));
+	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"Main.Msg","aliases":{"Main.AllocationResult":{"args":[],"type":"{ symbol : String.String, percentage : Basics.Int, price_per_times : List.List Main.PricePerTime }"},"Graphql.Http.Error":{"args":["parsedData"],"type":"Graphql.Http.RawError parsedData Graphql.Http.HttpError"},"Main.PortfolioResult":{"args":[],"type":"{ finalBalance : Basics.Int, allocations : List.List Main.AllocationResult }"},"Main.PricePerTime":{"args":[],"type":"{ price : Basics.Float, time : String.String }"},"Url.Url":{"args":[],"type":"{ protocol : Url.Protocol, host : String.String, port_ : Maybe.Maybe Basics.Int, path : String.String, query : Maybe.Maybe String.String, fragment : Maybe.Maybe String.String }"},"Time.Era":{"args":[],"type":"{ start : Basics.Int, offset : Basics.Int }"},"Graphql.Http.GraphqlError.GraphqlError":{"args":[],"type":"{ message : String.String, locations : Maybe.Maybe (List.List Graphql.Http.GraphqlError.Location), details : Dict.Dict String.String Json.Decode.Value }"},"Graphql.Http.GraphqlError.Location":{"args":[],"type":"{ line : Basics.Int, column : Basics.Int }"},"Http.Metadata":{"args":[],"type":"{ url : String.String, statusCode : Basics.Int, statusText : String.String, headers : Dict.Dict String.String String.String }"},"Json.Decode.Value":{"args":[],"type":"Json.Encode.Value"}},"unions":{"Main.Msg":{"args":[],"tags":{"UrlChanged":["Url.Url"],"LinkClicked":["Browser.UrlRequest"],"ChangeInitialBalance":["Basics.Int"],"ChangeStartDate":["Form.DateMsg"],"AdjustTimeZone":["Time.Zone"],"GetTime":["Time.Posix"],"ChangeSymbol":["Basics.Int","String.String"],"ChangePercentage":["Basics.Int","Basics.Int"],"AddAllocation":[],"CalculateValueToday":[],"GotPortfolio":["RemoteData.RemoteData (Graphql.Http.Error (Maybe.Maybe Main.PortfolioResult)) (Maybe.Maybe Main.PortfolioResult)"],"ToggleMutualization":[]}},"Form.DateMsg":{"args":[],"tags":{"Day":["Basics.Int"],"Month":["Basics.Int"],"Year":["Basics.Int"],"SetDefaultDate":[],"RemoveDate":[]}},"Basics.Float":{"args":[],"tags":{"Float":[]}},"Graphql.Http.HttpError":{"args":[],"tags":{"BadUrl":["String.String"],"Timeout":[],"NetworkError":[],"BadStatus":["Http.Metadata","String.String"],"BadPayload":["Json.Decode.Error"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"List.List":{"args":["a"],"tags":{}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Time.Posix":{"args":[],"tags":{"Posix":["Basics.Int"]}},"Url.Protocol":{"args":[],"tags":{"Http":[],"Https":[]}},"Graphql.Http.RawError":{"args":["parsedData","httpError"],"tags":{"GraphqlError":["Graphql.Http.GraphqlError.PossiblyParsedData parsedData","List.List Graphql.Http.GraphqlError.GraphqlError"],"HttpError":["httpError"]}},"RemoteData.RemoteData":{"args":["e","a"],"tags":{"NotAsked":[],"Loading":[],"Failure":["e"],"Success":["a"]}},"String.String":{"args":[],"tags":{"String":[]}},"Browser.UrlRequest":{"args":[],"tags":{"Internal":["Url.Url"],"External":["String.String"]}},"Time.Zone":{"args":[],"tags":{"Zone":["Basics.Int","List.List Time.Era"]}},"Dict.Dict":{"args":["k","v"],"tags":{"RBNode_elm_builtin":["Dict.NColor","k","v","Dict.Dict k v","Dict.Dict k v"],"RBEmpty_elm_builtin":[]}},"Json.Decode.Error":{"args":[],"tags":{"Field":["String.String","Json.Decode.Error"],"Index":["Basics.Int","Json.Decode.Error"],"OneOf":["List.List Json.Decode.Error"],"Failure":["String.String","Json.Decode.Value"]}},"Graphql.Http.GraphqlError.PossiblyParsedData":{"args":["parsed"],"tags":{"ParsedData":["parsed"],"UnparsedData":["Json.Decode.Value"]}},"Json.Encode.Value":{"args":[],"tags":{"Value":[]}},"Dict.NColor":{"args":[],"tags":{"Red":[],"Black":[]}}}}})}});}(this));
 
   var app = Elm.Main.init({ node: document.getElementById("elm") });
 }

@@ -94,6 +94,40 @@ portfolio_states fillInOptionals object_ =
     Object.selectionForCompositeField "portfolio_states" optionalArgs object_ (identity >> Decode.list)
 
 
+type alias PricePerTimeRequiredArguments =
+    { id : String }
+
+
+{-| Returns a PricePerTime
+-}
+price_per_time : PricePerTimeRequiredArguments -> SelectionSet decodesTo PortfolioPerformance.Object.PricePerTime -> SelectionSet decodesTo RootQuery
+price_per_time requiredArgs object_ =
+    Object.selectionForCompositeField "price_per_time" [ Argument.required "id" requiredArgs.id Encode.string ] object_ identity
+
+
+type alias PricePerTimesOptionalArguments =
+    { page : OptionalArgument Int
+    , per_page : OptionalArgument Int
+    , filter : OptionalArgument String
+    , order_by : OptionalArgument String
+    }
+
+
+{-| Returns a PricePerTime
+-}
+price_per_times : (PricePerTimesOptionalArguments -> PricePerTimesOptionalArguments) -> SelectionSet decodesTo PortfolioPerformance.Object.PricePerTime -> SelectionSet (List decodesTo) RootQuery
+price_per_times fillInOptionals object_ =
+    let
+        filledInOptionals =
+            fillInOptionals { page = Absent, per_page = Absent, filter = Absent, order_by = Absent }
+
+        optionalArgs =
+            [ Argument.optional "page" filledInOptionals.page Encode.int, Argument.optional "per_page" filledInOptionals.per_page Encode.int, Argument.optional "filter" filledInOptionals.filter Encode.string, Argument.optional "order_by" filledInOptionals.order_by Encode.string ]
+                |> List.filterMap identity
+    in
+    Object.selectionForCompositeField "price_per_times" optionalArgs object_ (identity >> Decode.list)
+
+
 type alias SubscribedQueriesOptionalArguments =
     { page : OptionalArgument Int
     , per_page : OptionalArgument Int
