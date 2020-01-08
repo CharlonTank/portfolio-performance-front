@@ -11,6 +11,7 @@ import Calendar exposing (Date, RawDate)
 import Color
 import DateTime exposing (fromPosix)
 import Elegant exposing (SizeUnit, percent, pt, px, vh)
+import Elegant.Block as Block
 import Elegant.Border as Border
 import Elegant.Box as Box
 import Elegant.Constants as Constants
@@ -18,13 +19,15 @@ import Elegant.Corner as Corner
 import Elegant.Cursor as Cursor
 import Elegant.Dimensions as Dimensions
 import Elegant.Display as Display
+import Elegant.Flex as Flex
+import Elegant.Margin as Margin
 import Elegant.Outline as Outline
 import Elegant.Padding as Padding
 import Elegant.Typography as Typography
 import Form exposing (..)
 import Graphql.Http exposing (..)
 import Graphql.Http.GraphqlError
-import Graphql.Operation exposing (RootMutation)
+import Graphql.Operation exposing (RootMutation, RootQuery)
 import Graphql.OptionalArgument exposing (..)
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import List.Extra exposing (..)
@@ -35,6 +38,7 @@ import PortfolioPerformance.Object as Object
 import PortfolioPerformance.Object.Allocation as Allocation
 import PortfolioPerformance.Object.PortfolioState as PortfolioState
 import PortfolioPerformance.Object.PricePerTime as PricePerTime
+import PortfolioPerformance.Query as Query
 import RemoteData exposing (RemoteData)
 import Task
 import Time
@@ -65,6 +69,8 @@ type alias PortfolioResult =
     { finalBalance : Int
     , allocations : List AllocationResult
     , token : Maybe String
+    , startDate : String
+    , initialBalance : Int
     }
 
 
@@ -92,6 +98,7 @@ type Msg
     | AddAllocation
     | CalculateValueToday
     | GotPortfolio (RemoteData (Graphql.Http.Error (Maybe PortfolioResult)) (Maybe PortfolioResult))
+    | GotSavedPortfolio (RemoteData (Graphql.Http.Error PortfolioResult) PortfolioResult)
     | ToggleMutualization
 
 
@@ -115,14 +122,23 @@ homeView model =
 
 view : Model -> NodeWithStyle Msg
 view model =
-    node []
-        [ node
+    flex
+        [ style
+            [ Style.flexContainerProperties [ Flex.justifyContent Flex.justifyContentCenter ]
+            , Style.block [ Block.fullWidth ]
+            , Style.box [ Box.margin [ Margin.all Margin.auto ] ]
+            ]
+        ]
+        [ flexItem
             [ style
-                [ Style.block []
+                [ Style.block [ Block.width (px 600) ]
                 , Style.box [ Box.padding [ Padding.horizontal Constants.medium ] ]
                 ]
             ]
-            ([ buildInputNumber
+            ([ h1
+                [ style [ Style.blockProperties [ Block.alignCenter ] ] ]
+                [ text "Portfolio Performance Tester" ]
+             , buildInputNumber
                 (inputLabelPlaceholder "Initial Balance" "1337")
                 model.inputs.initial_balance
                 ChangeInitialBalance
@@ -138,7 +154,7 @@ view model =
                         , border = Color.black
                         , text = Color.black
                         }
-                        "Add"
+                        "Add another allocation"
                         AddAllocation
                         :: (case List.foldl (\a -> \b -> a.percentage + b) 0 model.inputs.allocations of
                                 100 ->
@@ -147,7 +163,7 @@ view model =
                                         , border = Color.black
                                         , text = Color.black
                                         }
-                                        "Click here to value you balance today and save it"
+                                        "Click here to value your balance today and save it"
                                         CalculateValueToday
                                     ]
 
@@ -189,7 +205,7 @@ showPortfolioResult initialBalance portfolioResult mutualization =
                 [ text
                     (let
                         valueMade =
-                            portfolioResult.finalBalance - initialBalance
+                            portfolioResult.finalBalance - portfolioResult.initialBalance
                      in
                      (if valueMade >= 0 then
                         "You would have made "
@@ -222,7 +238,7 @@ showAllocationResult initialBalance allocation =
         initialAllocationBalance =
             toFloat (initialBalance * allocation.percentage) / 100
 
-        finaAllocationBalance =
+        finalAllocationBalance =
             ratio * initialAllocationBalance
     in
     div []
@@ -231,7 +247,7 @@ showAllocationResult initialBalance allocation =
         , div []
             [ text ("Initial balance : " ++ String.fromFloat initialAllocationBalance) ]
         , div []
-            [ text ("Final balance : " ++ String.fromFloat finaAllocationBalance) ]
+            [ text ("Final balance : " ++ String.fromFloat finalAllocationBalance) ]
         ]
 
 
@@ -313,7 +329,7 @@ update msg model =
                     { model | startDateInput = newStartDateInput, inputs = updateStartDateInInputs inputs newStartDateInput }
 
                 ( _, SetDefaultDate ) ->
-                    { model | startDateInput = DateTime.fromRawParts { day = 20, month = Time.Mar, year = 2013 } { hours = 0, minutes = 0, seconds = 0, milliseconds = 0 } }
+                    { model | startDateInput = DateTime.fromRawParts defaultDate { hours = 0, minutes = 0, seconds = 0, milliseconds = 0 } }
 
                 ( _, RemoveDate ) ->
                     { model | startDateInput = Nothing }
@@ -359,11 +375,39 @@ update msg model =
                                                     Absent
                                     }
                               }
-                            , Cmd.none
+                            , Cmd.batch
+                                [ Nav.replaceUrl model.key (Maybe.withDefault "" portfolioResult.token) ]
                             )
 
                         Nothing ->
                             ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        GotSavedPortfolio receiveData ->
+            case receiveData of
+                RemoteData.Success portfolioResult ->
+                    ( { model
+                        | portfolioResult = Just portfolioResult
+                        , startDateInput = datetimeFromString portfolioResult.startDate
+                        , inputs =
+                            { inputs
+                                | token =
+                                    case portfolioResult.token of
+                                        Just token ->
+                                            Present token
+
+                                        Nothing ->
+                                            Absent
+                                , start_date = portfolioResult.startDate
+                                , initial_balance = portfolioResult.initialBalance
+                                , allocations = List.map (\a -> { percentage = a.percentage, symbol = a.symbol }) portfolioResult.allocations
+                                , save = True
+                            }
+                      }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( model, Cmd.none )
@@ -391,6 +435,26 @@ stringFromDatetime date =
         ++ ((date |> DateTime.getDay) |> String.fromInt |> normalizeIntForDate)
 
 
+datetimeFromString : String -> Maybe DateTime.DateTime
+datetimeFromString str =
+    DateTime.fromRawParts
+        (case String.split "-" str of
+            a :: b :: c :: [] ->
+                { year = Maybe.withDefault 2013 (String.toInt a)
+                , month = Maybe.withDefault Time.Jan (intToMonth (Maybe.withDefault 1 (String.toInt b)))
+                , day = Maybe.withDefault 20 (String.toInt c)
+                }
+
+            _ ->
+                defaultDate
+        )
+        { hours = 0, minutes = 0, seconds = 0, milliseconds = 0 }
+
+
+defaultDate =
+    { day = 20, month = Time.Mar, year = 2013 }
+
+
 createPortfolioState : InputObject.PortfolioStateInputType -> Cmd Msg
 createPortfolioState inputs =
     sendPortfolioState inputs
@@ -405,10 +469,12 @@ sendPortfolioState inputs =
 
 portfolioResultSelector : SelectionSet PortfolioResult Object.PortfolioState
 portfolioResultSelector =
-    SelectionSet.map3 PortfolioResult
+    SelectionSet.map5 PortfolioResult
         PortfolioState.final_balance
         (PortfolioState.allocations allocationSelector)
         PortfolioState.token
+        PortfolioState.start_date
+        PortfolioState.initial_balance
 
 
 allocationSelector : SelectionSet AllocationResult Object.Allocation
@@ -455,8 +521,24 @@ init flags url key =
       , portfolioResult = Nothing
       , mutualization = True
       }
-    , Cmd.batch [ Task.perform GetTime Time.now ]
+    , Cmd.batch
+        (Task.perform GetTime Time.now
+            :: (case getToken url.path of
+                    Just token ->
+                        [ fetchPortfolio token ]
+
+                    Nothing ->
+                        []
+               )
+        )
     )
+
+
+fetchPortfolio : String -> Cmd Msg
+fetchPortfolio token =
+    Query.portfolio_state { id = token } portfolioResultSelector
+        |> Graphql.Http.queryRequest (backendEndPoint ++ "graphql")
+        |> Graphql.Http.send (RemoteData.fromResult >> GotSavedPortfolio)
 
 
 getToken : String -> Maybe String

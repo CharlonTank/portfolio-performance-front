@@ -34,6 +34,16 @@ id =
     Object.selectionForField "String" "id" [] Decode.string
 
 
+initial_balance : SelectionSet Int PortfolioPerformance.Object.PortfolioState
+initial_balance =
+    Object.selectionForField "Int" "initial_balance" [] Decode.int
+
+
+start_date : SelectionSet String PortfolioPerformance.Object.PortfolioState
+start_date =
+    Object.selectionForField "String" "start_date" [] Decode.string
+
+
 token : SelectionSet (Maybe String) PortfolioPerformance.Object.PortfolioState
 token =
     Object.selectionForField "(Maybe String)" "token" [] (Decode.string |> Decode.nullable)
