@@ -6,5 +6,8 @@
     "rails-graphql-api": "elm-graphql http://localhost:3123/graphql --base PortfolioPerformance",
     "live": "elm-live src/Main.elm -u --open",
     "lived": "elm-live src/Main.elm -u --open -- --debug"
+  },
+  "devDependencies": {
+    "create-elm-app": "^4.1.3"
   }
 }
