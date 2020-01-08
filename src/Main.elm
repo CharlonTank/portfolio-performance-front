@@ -3,7 +3,6 @@ module Main exposing (main)
 import BodyBuilder exposing (..)
 import BodyBuilder.Attributes as Attributes exposing (..)
 import BodyBuilder.Elements.Clickable exposing (..)
-import BodyBuilder.Events as Events
 import BodyBuilder.Style as Style
 import Browser
 import Browser.Navigation as Nav
@@ -438,7 +437,7 @@ view model =
                 [ style [ Style.blockProperties [ Block.alignCenter ] ] ]
                 [ text "Portfolio Performance Tester" ]
              , buildInputNumber
-                (inputLabelPlaceholder "Initial Balance" "1337")
+                (inputLabelPlaceholder "Initial Balance ($)" "1337")
                 model.inputs.initial_balance
                 ChangeInitialBalance
              , buildDate
@@ -461,7 +460,8 @@ view model =
                             AddAllocation
                             :: (case List.foldl (\a -> \b -> a.percentage + b) 0 model.inputs.allocations of
                                     100 ->
-                                        [ monochromeSquaredButton
+                                        [ br
+                                        , monochromeSquaredButton
                                             { background = Color.white
                                             , border = Color.black
                                             , text = Color.black
@@ -476,13 +476,14 @@ view model =
                         )
                             ++ (case model.portfolioResult of
                                     Just portfolioResult ->
-                                        [ showPortfolioResult model.inputs.initial_balance portfolioResult model.mutualization
+                                        [ br
+                                        , showPortfolioResult model.inputs.initial_balance portfolioResult model.mutualization
                                         , monochromeSquaredButton
                                             { background = Color.white
                                             , border = Color.black
                                             , text = Color.black
                                             }
-                                            "Toggle mutualization"
+                                            "Toggle mutualization "
                                             ToggleMutualization
                                         , case portfolioResult.token of
                                             Just token ->
@@ -544,14 +545,31 @@ showAllocationResult initialBalance allocation =
 
         finalAllocationBalance =
             ratio * initialAllocationBalance
+
+        profit =
+            round (finalAllocationBalance - initialAllocationBalance)
     in
     div []
         [ div []
             [ text ("Symbol : " ++ allocation.symbol) ]
         , div []
-            [ text ("Initial balance : " ++ String.fromFloat initialAllocationBalance) ]
+            [ text ("Initial balance : " ++ String.fromFloat initialAllocationBalance ++ "$") ]
         , div []
-            [ text ("Final balance : " ++ String.fromFloat finalAllocationBalance) ]
+            [ text ("Final balance : " ++ String.fromInt (round finalAllocationBalance) ++ "$") ]
+        , div []
+            [ text
+                ("Profit : "
+                    ++ (if profit >= 0 then
+                            "+"
+
+                        else
+                            "-"
+                       )
+                    ++ String.fromInt profit
+                    ++ "$"
+                )
+            ]
+        , br
         ]
 
 
