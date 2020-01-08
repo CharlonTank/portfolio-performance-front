@@ -564,9 +564,9 @@ main =
 
 backendEndPoint : String
 backendEndPoint =
-    "http://localhost:3000/"
+    "https://portfolio-performance-api.herokuapp.com/"
 
 
 frontendEndPoint : String
 frontendEndPoint =
-    "http://localhost:8000/"
+    "https://adoring-bohr-d3c27b.netlify.com/"
