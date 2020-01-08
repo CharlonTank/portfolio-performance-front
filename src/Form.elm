@@ -36,7 +36,6 @@ import BodyBuilder.Attributes as A
 import BodyBuilder.Elements.Clickable exposing (..)
 import BodyBuilder.Events as E
 import BodyBuilder.Extra exposing (..)
-import BodyBuilder.Router as Router
 import BodyBuilder.Style as Style
 import Color
 import DateTime
@@ -48,22 +47,10 @@ import Elegant.Constants as Constants
 import Elegant.Cursor as Cursor
 import Elegant.Display as Display
 import Elegant.Extra exposing (..)
-import Elegant.Flex as Flex
-import Elegant.Grid as Grid
-import Elegant.Grid.Extra as GridExtra
-import Elegant.Margin as Margin
-import Elegant.Outline as Outline
-import Elegant.Overflow as Overflow
-import Elegant.Padding as Padding
 import Elegant.Typography as Typography
-import Html
-import Html.Events.Extra.Touch as Touch
-import Ionicon
-import Ionicon.Ios as Ios
 import Json.Decode as Decode
 import Modifiers exposing (..)
 import Time exposing (Month(..), Posix)
-import VirtualDom
 
 
 borderColor : Color.Color
