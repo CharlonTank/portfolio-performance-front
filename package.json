@@ -8,6 +8,7 @@
     "lived": "elm-live src/Main.elm -u --open -- --debug"
   },
   "devDependencies": {
-    "create-elm-app": "^4.1.3"
+    "create-elm-app": "^4.1.3",
+    "elm-live": "^4.0.0-rc.1"
   }
 }

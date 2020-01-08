@@ -67,6 +67,7 @@ type alias Model =
     , startDateInput : Maybe DateTime.DateTime
     , portfolioResult : Maybe PortfolioResult
     , mutualization : Bool
+    , loading : Bool
     }
 
 
@@ -104,6 +105,10 @@ initInputs key =
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
+    let
+        maybeToken =
+            getTokenFromPath url.path
+    in
     ( { inputs = initInputs key
       , key = key
       , url = url
@@ -111,10 +116,17 @@ init flags url key =
       , startDateInput = Nothing
       , portfolioResult = Nothing
       , mutualization = True
+      , loading =
+            case maybeToken of
+                Just _ ->
+                    True
+
+                _ ->
+                    False
       }
     , Cmd.batch
         (Task.perform GetTime Time.now
-            :: (case getTokenFromPath url.path of
+            :: (case maybeToken of
                     Just token ->
                         [ fetchPortfolio token ]
 
@@ -227,7 +239,7 @@ update msg model =
             ( { model | inputs = { inputs | allocations = inputs.allocations ++ [ InputObject.AllocationInputType "" 0 ] } }, Cmd.none )
 
         CalculateValueToday ->
-            ( model
+            ( { model | loading = True }
             , createPortfolioState { inputs | save = True }
             )
 
@@ -248,16 +260,17 @@ update msg model =
                                                 Nothing ->
                                                     Absent
                                     }
+                                , loading = False
                               }
                             , Cmd.batch
                                 [ Nav.replaceUrl model.key (Maybe.withDefault "" portfolioResult.token) ]
                             )
 
                         Nothing ->
-                            ( model, Cmd.none )
+                            ( { model | loading = False }, Cmd.none )
 
                 _ ->
-                    ( model, Cmd.none )
+                    ( { model | loading = False }, Cmd.none )
 
         GotSavedPortfolio receiveData ->
             case receiveData of
@@ -279,12 +292,13 @@ update msg model =
                                 , allocations = List.map (\a -> { percentage = a.percentage, symbol = a.symbol }) portfolioResult.allocations
                                 , save = True
                             }
+                        , loading = False
                       }
                     , Cmd.none
                     )
 
                 _ ->
-                    ( model, Cmd.none )
+                    ( { model | loading = False }, Cmd.none )
 
         ToggleMutualization ->
             ( { model | mutualization = not model.mutualization }, Cmd.none )
@@ -434,48 +448,53 @@ view model =
                 ChangeStartDate
              ]
                 ++ buildMutilpleInputText model.inputs.allocations
-                ++ (monochromeSquaredButton
-                        { background = Color.white
-                        , border = Color.black
-                        , text = Color.black
-                        }
-                        "Add another allocation"
-                        AddAllocation
-                        :: (case List.foldl (\a -> \b -> a.percentage + b) 0 model.inputs.allocations of
-                                100 ->
-                                    [ monochromeSquaredButton
-                                        { background = Color.white
-                                        , border = Color.black
-                                        , text = Color.black
-                                        }
-                                        "Click here to value your balance today and save it"
-                                        CalculateValueToday
-                                    ]
+                ++ (if model.loading then
+                        [ div [] [ text "...Loading..." ] ]
 
-                                i ->
-                                    [ div [] [ text ("Make sure to have 100 percents in total : " ++ String.fromInt i ++ "%") ] ]
-                           )
-                   )
-                ++ (case model.portfolioResult of
-                        Just portfolioResult ->
-                            [ showPortfolioResult model.inputs.initial_balance portfolioResult model.mutualization
-                            , monochromeSquaredButton
-                                { background = Color.white
-                                , border = Color.black
-                                , text = Color.black
-                                }
-                                "Toggle mutualization"
-                                ToggleMutualization
-                            , case portfolioResult.token of
-                                Just token ->
-                                    text ("Your portfolio is saved at this url : " ++ frontendEndPoint ++ token)
+                    else
+                        (monochromeSquaredButton
+                            { background = Color.white
+                            , border = Color.black
+                            , text = Color.black
+                            }
+                            "Add another allocation"
+                            AddAllocation
+                            :: (case List.foldl (\a -> \b -> a.percentage + b) 0 model.inputs.allocations of
+                                    100 ->
+                                        [ monochromeSquaredButton
+                                            { background = Color.white
+                                            , border = Color.black
+                                            , text = Color.black
+                                            }
+                                            "Click here to value your balance today and save it"
+                                            CalculateValueToday
+                                        ]
 
-                                Nothing ->
-                                    div [] []
-                            ]
+                                    i ->
+                                        [ div [] [ text ("Make sure to have 100 percents in total : " ++ String.fromInt i ++ "%") ] ]
+                               )
+                        )
+                            ++ (case model.portfolioResult of
+                                    Just portfolioResult ->
+                                        [ showPortfolioResult model.inputs.initial_balance portfolioResult model.mutualization
+                                        , monochromeSquaredButton
+                                            { background = Color.white
+                                            , border = Color.black
+                                            , text = Color.black
+                                            }
+                                            "Toggle mutualization"
+                                            ToggleMutualization
+                                        , case portfolioResult.token of
+                                            Just token ->
+                                                text ("Your portfolio is saved at this url : " ++ frontendEndPoint ++ token)
 
-                        Nothing ->
-                            []
+                                            Nothing ->
+                                                div [] []
+                                        ]
+
+                                    Nothing ->
+                                        []
+                               )
                    )
             )
         ]
@@ -566,6 +585,12 @@ subscriptions _ =
 
 
 -- ENV
+-- backendEndPoint : String
+-- backendEndPoint =
+--     "http://localhost:3000/"
+-- frontendEndPoint : String
+-- frontendEndPoint =
+--     "http://localhost:8000/"
 
 
 backendEndPoint : String
