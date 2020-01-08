@@ -10,9 +10,6 @@ repl-temp-*
 # Dependency directories
 node_modules
 
-# Generate by elm make
-index.html
-
 # Desktop Services Store on macOS
 .DS_Store
 
