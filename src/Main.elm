@@ -35,7 +35,13 @@ import RemoteData exposing (RemoteData)
 import Task
 import Time
 import Url
-import Utils exposing (findBy, gray, intToMonth, normalizeIntForDate, textToHtml)
+import Utils
+    exposing
+        ( intToMonth
+        , normalizeIntForDate
+        , onOrOff
+        , sameDate
+        )
 
 
 
@@ -67,12 +73,13 @@ type alias Model =
     , portfolioResult : Maybe PortfolioResult
     , mutualization : Bool
     , loading : Bool
+    , yearlyRebalancing : Bool
+    , finalBalance : FinalBalance
     }
 
 
 type alias PortfolioResult =
-    { finalBalance : Int
-    , allocations : List AllocationResult
+    { allocations : List AllocationResult
     , token : Maybe String
     , startDate : String
     , initialBalance : Int
@@ -89,6 +96,12 @@ type alias AllocationResult =
 type alias PricePerTime =
     { price : Float
     , time : String
+    }
+
+
+type alias FinalBalance =
+    { yearlyRebalanced : Int
+    , noRebalanced : Int
     }
 
 
@@ -122,6 +135,8 @@ init flags url key =
 
                 _ ->
                     False
+      , yearlyRebalancing = False
+      , finalBalance = { yearlyRebalanced = 0, noRebalanced = 0 }
       }
     , Cmd.batch
         (Task.perform GetTime Time.now
@@ -153,6 +168,7 @@ type Msg
     | GotPortfolio (RemoteData (Graphql.Http.Error (Maybe PortfolioResult)) (Maybe PortfolioResult))
     | GotSavedPortfolio (RemoteData (Graphql.Http.Error PortfolioResult) PortfolioResult)
     | ToggleMutualization
+    | ToggleYearlyRebalancing
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -260,6 +276,10 @@ update msg model =
                                                     Absent
                                     }
                                 , loading = False
+                                , finalBalance =
+                                    { yearlyRebalanced = calculFinalBalance portfolioResult.initialBalance portfolioResult.allocations
+                                    , noRebalanced = List.foldl (+) 0 (List.map (calculAllocationFinalBalance portfolioResult.initialBalance) portfolioResult.allocations)
+                                    }
                               }
                             , Cmd.batch
                                 [ Nav.replaceUrl model.key (Maybe.withDefault "" portfolioResult.token) ]
@@ -292,6 +312,10 @@ update msg model =
                                 , save = True
                             }
                         , loading = False
+                        , finalBalance =
+                            { yearlyRebalanced = calculFinalBalance portfolioResult.initialBalance portfolioResult.allocations
+                            , noRebalanced = List.foldl (+) 0 (List.map (calculAllocationFinalBalance portfolioResult.initialBalance) portfolioResult.allocations)
+                            }
                       }
                     , Cmd.none
                     )
@@ -301,6 +325,9 @@ update msg model =
 
         ToggleMutualization ->
             ( { model | mutualization = not model.mutualization }, Cmd.none )
+
+        ToggleYearlyRebalancing ->
+            ( { model | yearlyRebalancing = not model.yearlyRebalancing }, Cmd.none )
 
 
 updateStartDateInInputs : InputObject.PortfolioStateInputType -> Maybe DateTime.DateTime -> InputObject.PortfolioStateInputType
@@ -357,8 +384,7 @@ sendPortfolioState inputs =
 
 portfolioResultSelector : SelectionSet PortfolioResult Object.PortfolioState
 portfolioResultSelector =
-    SelectionSet.map5 PortfolioResult
-        PortfolioState.final_balance
+    SelectionSet.map4 PortfolioResult
         (PortfolioState.allocations allocationSelector)
         PortfolioState.token
         PortfolioState.start_date
@@ -446,19 +472,21 @@ view model =
                 (DateBetween (fromPosix (Time.millisToPosix 0)) model.dateNow)
                 ChangeStartDate
              ]
-                ++ buildMutilpleInputText model.inputs.allocations
+                ++ buildAllocationsForm model.inputs.allocations
                 ++ (if model.loading then
                         [ div [] [ text "...Loading..." ] ]
 
                     else
-                        (monochromeSquaredButton
+                        ([ monochromeSquaredButton
                             { background = Color.white
                             , border = Color.black
                             , text = Color.black
                             }
                             "Add another allocation"
                             AddAllocation
-                            :: (case ( List.foldl (\a -> \b -> a.percentage + b) 0 model.inputs.allocations, model.inputs.initial_balance > 0 ) of
+                         , br
+                         ]
+                            ++ (case ( List.foldl (\a -> \b -> a.percentage + b) 0 model.inputs.allocations, model.inputs.initial_balance > 0 ) of
                                     ( 100, True ) ->
                                         [ br
                                         , monochromeSquaredButton
@@ -480,14 +508,15 @@ view model =
                             ++ (case model.portfolioResult of
                                     Just portfolioResult ->
                                         [ br
-                                        , showPortfolioResult model.inputs.initial_balance portfolioResult model.mutualization
+                                        , showPortfolioResult model portfolioResult
                                         , monochromeSquaredButton
                                             { background = Color.white
                                             , border = Color.black
                                             , text = Color.black
                                             }
-                                            "Toggle mutualization "
+                                            ("Toggle mutualization: " ++ onOrOff model.mutualization)
                                             ToggleMutualization
+                                        , br
                                         , case portfolioResult.token of
                                             Just token ->
                                                 text ("Your portfolio is saved at this url : " ++ frontendEndPoint ++ token)
@@ -499,21 +528,52 @@ view model =
                                     Nothing ->
                                         []
                                )
+                            ++ [ br
+                               , monochromeSquaredButton
+                                    { background = Color.white
+                                    , border = Color.black
+                                    , text = Color.black
+                                    }
+                                    ("Toggle yearly rebalancing: "
+                                        ++ onOrOff model.yearlyRebalancing
+                                        ++ (if not model.mutualization then
+                                                " - Warning: not working when mutualization is off"
+
+                                            else
+                                                ""
+                                           )
+                                    )
+                                    ToggleYearlyRebalancing
+                               ]
                    )
             )
         ]
 
 
-showPortfolioResult : Int -> PortfolioResult -> Bool -> NodeWithStyle Msg
-showPortfolioResult initialBalance portfolioResult mutualization =
+showPortfolioResult : Model -> PortfolioResult -> NodeWithStyle Msg
+showPortfolioResult { finalBalance, yearlyRebalancing, mutualization } portfolioResult =
+    let
+        finalBalancedCalculated =
+            if yearlyRebalancing then
+                finalBalance.yearlyRebalanced
+
+            else
+                finalBalance.noRebalanced
+    in
     if mutualization then
         div []
-            [ div [] [ text ("Final Balance : " ++ String.fromInt portfolioResult.finalBalance ++ "$") ]
+            [ div []
+                [ text
+                    ("Final Balance : "
+                        ++ String.fromInt finalBalancedCalculated
+                        ++ "$"
+                    )
+                ]
             , div []
                 [ text
                     (let
                         valueMade =
-                            portfolioResult.finalBalance - portfolioResult.initialBalance
+                            finalBalancedCalculated - portfolioResult.initialBalance
                      in
                      (if valueMade >= 0 then
                         "You would have made "
@@ -529,7 +589,7 @@ showPortfolioResult initialBalance portfolioResult mutualization =
 
     else
         div []
-            (List.map (showAllocationResult initialBalance) portfolioResult.allocations)
+            (List.map (showAllocationResult portfolioResult.initialBalance) portfolioResult.allocations)
 
 
 showAllocationResult : Int -> AllocationResult -> NodeWithStyle Msg
@@ -572,17 +632,19 @@ showAllocationResult initialBalance allocation =
                     ++ "$"
                 )
             ]
-        , br
+
+        -- Show all the prices each year
+        -- , div [] (List.map (\ppt -> div [] [ text ("date: " ++ ppt.time ++ " price: " ++ String.fromFloat ppt.price) ]) (pricePerTimesWithDifferentYears allocation.price_per_times))
         ]
 
 
-buildMutilpleInputText : List InputObject.AllocationInputType -> List (NodeWithStyle Msg)
-buildMutilpleInputText list =
-    List.indexedMap buildSymbolAndPercentage list
+buildAllocationsForm : List InputObject.AllocationInputType -> List (NodeWithStyle Msg)
+buildAllocationsForm list =
+    List.indexedMap buildSymbolAndPercentageForm list
 
 
-buildSymbolAndPercentage : Int -> InputObject.AllocationInputType -> NodeWithStyle Msg
-buildSymbolAndPercentage i a =
+buildSymbolAndPercentageForm : Int -> InputObject.AllocationInputType -> NodeWithStyle Msg
+buildSymbolAndPercentageForm i a =
     div []
         [ buildInputText
             (inputLabelPlaceholder "Add a symbol" "AAPL")
@@ -593,6 +655,107 @@ buildSymbolAndPercentage i a =
             a.percentage
             (ChangePercentage i)
         ]
+
+
+
+-- Calculation
+
+
+calculFinalBalance : Int -> List AllocationResult -> Int
+calculFinalBalance initialBalance allocations =
+    let
+        allocationsWithDifferentYears =
+            List.map (\a -> { a | price_per_times = pricePerTimesWithDifferentYears a.price_per_times }) allocations
+
+        transposedPrices =
+            transpose
+                (List.map (\a -> a.price_per_times) allocationsWithDifferentYears)
+    in
+    calculTransposed allocations (List.reverse transposedPrices) initialBalance
+
+
+calculTransposed : List AllocationResult -> List (List PricePerTime) -> Int -> Int
+calculTransposed allocations transposedPrices initialBalance =
+    case transposedPrices of
+        ppt1 :: l ->
+            case l of
+                ppt2 :: _ ->
+                    let
+                        newInitialBalance =
+                            List.foldl (+) 0 (calculNewYearlyBalance (zip allocations (transpose [ ppt1, ppt2 ])) initialBalance)
+                    in
+                    calculTransposed allocations l newInitialBalance
+
+                _ ->
+                    initialBalance
+
+        _ ->
+            initialBalance
+
+
+calculNewYearlyBalance : List ( AllocationResult, List PricePerTime ) -> Int -> List Int
+calculNewYearlyBalance list initialBalance =
+    List.map
+        (\( { percentage }, pricePerTimeDuo ) ->
+            case pricePerTimeDuo of
+                old :: new :: [] ->
+                    let
+                        ratio =
+                            new.price / old.price
+
+                        initialAllocationBalance =
+                            toFloat (initialBalance * percentage) / 100
+
+                        finalAllocationBalance =
+                            ratio * initialAllocationBalance
+                    in
+                    round finalAllocationBalance
+
+                _ ->
+                    0
+        )
+        list
+
+
+calculAllocationFinalBalance : Int -> AllocationResult -> Int
+calculAllocationFinalBalance initialBalance allocation =
+    let
+        ratio =
+            case ( List.Extra.last allocation.price_per_times, List.head allocation.price_per_times ) of
+                ( Just last, Just first ) ->
+                    first.price / last.price
+
+                _ ->
+                    1
+
+        initialAllocationBalance =
+            toFloat (initialBalance * allocation.percentage) / 100
+
+        finalAllocationBalance =
+            ratio * initialAllocationBalance
+    in
+    round finalAllocationBalance
+
+
+pricePerTimesWithDifferentYears : List PricePerTime -> List PricePerTime
+pricePerTimesWithDifferentYears listPrices =
+    let
+        newList =
+            List.map Tuple.first <|
+                groupWhile (\a b -> sameDate a.time b.time) listPrices
+    in
+    newList
+        ++ (case ( last newList, last listPrices ) of
+                ( Just newListStartPrice, Just startPrice ) ->
+                    if newListStartPrice.time == startPrice.time then
+                        []
+
+                    else
+                        [ startPrice ]
+
+                _ ->
+                    []
+           )
 
 
 
