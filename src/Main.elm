@@ -24,6 +24,7 @@ import Graphql.OptionalArgument exposing (..)
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import List.Extra exposing (..)
 import Modifiers exposing (..)
+import OrientedLayout
 import PortfolioPerformance.InputObject as InputObject
 import PortfolioPerformance.Mutation as Mutation
 import PortfolioPerformance.Object as Object
@@ -420,86 +421,83 @@ homeView model =
 
 view : Model -> NodeWithStyle Msg
 view model =
-    flex
-        [ style
-            [ Style.flexContainerProperties [ Flex.justifyContent Flex.justifyContentCenter ]
-            , Style.block [ Block.fullWidth ]
-            , Style.box [ Box.margin [ Margin.all Margin.auto ] ]
-            ]
-        ]
-        [ flexItem
+    OrientedLayout.centeredColumn
+        []
+        [ OrientedLayout.autoCell
             [ style
                 [ Style.block [ Block.width (px 600) ]
                 , Style.box [ Box.padding [ Padding.horizontal Constants.medium ] ]
                 ]
             ]
-            ([ h1
-                [ style [ Style.blockProperties [ Block.alignCenter ] ] ]
-                [ text "Portfolio Performance Tester" ]
-             , buildInputNumber
-                (inputLabelPlaceholder "Initial Balance ($)" "1337")
-                model.inputs.initial_balance
-                ChangeInitialBalance
-             , buildDate
-                (inputLabelPlaceholder "Start Date" "2013-03-20")
-                model.startDateInput
-                (DateBetween (fromPosix (Time.millisToPosix 0)) model.dateNow)
-                ChangeStartDate
-             ]
-                ++ buildMutilpleInputText model.inputs.allocations
-                ++ (if model.loading then
-                        [ div [] [ text "...Loading..." ] ]
+            (div []
+                ([ h1
+                    [ style [ Style.blockProperties [ Block.alignCenter ] ] ]
+                    [ text "Portfolio Performance Tester" ]
+                 , buildInputNumber
+                    (inputLabelPlaceholder "Initial Balance ($)" "1337")
+                    model.inputs.initial_balance
+                    ChangeInitialBalance
+                 , buildDate
+                    (inputLabelPlaceholder "Start Date" "2013-03-20")
+                    model.startDateInput
+                    (DateBetween (fromPosix (Time.millisToPosix 0)) model.dateNow)
+                    ChangeStartDate
+                 ]
+                    ++ buildMutilpleInputText model.inputs.allocations
+                    ++ (if model.loading then
+                            [ div [] [ text "...Loading..." ] ]
 
-                    else
-                        (monochromeSquaredButton
-                            { background = Color.white
-                            , border = Color.black
-                            , text = Color.black
-                            }
-                            "Add another allocation"
-                            AddAllocation
-                            :: (case ( List.foldl (\a -> \b -> a.percentage + b) 0 model.inputs.allocations, model.inputs.initial_balance > 0 ) of
-                                    ( 100, True ) ->
-                                        [ br
-                                        , monochromeSquaredButton
-                                            { background = Color.white
-                                            , border = Color.black
-                                            , text = Color.black
-                                            }
-                                            "Click here to value your balance today and save it"
-                                            CalculateValueToday
-                                        ]
+                        else
+                            (monochromeSquaredButton
+                                { background = Color.white
+                                , border = Color.black
+                                , text = Color.black
+                                }
+                                "Add another allocation"
+                                AddAllocation
+                                :: (case ( List.foldl (\a -> \b -> a.percentage + b) 0 model.inputs.allocations, model.inputs.initial_balance > 0 ) of
+                                        ( 100, True ) ->
+                                            [ br
+                                            , monochromeSquaredButton
+                                                { background = Color.white
+                                                , border = Color.black
+                                                , text = Color.black
+                                                }
+                                                "Click here to value your balance today and save it"
+                                                CalculateValueToday
+                                            ]
 
-                                    ( i, True ) ->
-                                        [ div [] [ text ("Make sure to have 100 percents in total : " ++ String.fromInt i ++ "%") ] ]
+                                        ( i, True ) ->
+                                            [ div [] [ text ("Make sure to have 100 percents in total : " ++ String.fromInt i ++ "%") ] ]
 
-                                    _ ->
-                                        [ div [] [ text "Make sure to put an initial balance" ] ]
-                               )
-                        )
-                            ++ (case model.portfolioResult of
-                                    Just portfolioResult ->
-                                        [ br
-                                        , showPortfolioResult model.inputs.initial_balance portfolioResult model.mutualization
-                                        , monochromeSquaredButton
-                                            { background = Color.white
-                                            , border = Color.black
-                                            , text = Color.black
-                                            }
-                                            "Toggle mutualization "
-                                            ToggleMutualization
-                                        , case portfolioResult.token of
-                                            Just token ->
-                                                text ("Your portfolio is saved at this url : " ++ frontendEndPoint ++ token)
+                                        _ ->
+                                            [ div [] [ text "Make sure to put an initial balance" ] ]
+                                   )
+                            )
+                                ++ (case model.portfolioResult of
+                                        Just portfolioResult ->
+                                            [ br
+                                            , showPortfolioResult model.inputs.initial_balance portfolioResult model.mutualization
+                                            , monochromeSquaredButton
+                                                { background = Color.white
+                                                , border = Color.black
+                                                , text = Color.black
+                                                }
+                                                "Toggle mutualization "
+                                                ToggleMutualization
+                                            , case portfolioResult.token of
+                                                Just token ->
+                                                    text ("Your portfolio is saved at this url : " ++ frontendEndPoint ++ token)
 
-                                            Nothing ->
-                                                div [] []
-                                        ]
+                                                Nothing ->
+                                                    div [] []
+                                            ]
 
-                                    Nothing ->
-                                        []
-                               )
-                   )
+                                        Nothing ->
+                                            []
+                                   )
+                       )
+                )
             )
         ]
 
