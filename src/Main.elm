@@ -458,8 +458,8 @@ view model =
                             }
                             "Add another allocation"
                             AddAllocation
-                            :: (case List.foldl (\a -> \b -> a.percentage + b) 0 model.inputs.allocations of
-                                    100 ->
+                            :: (case ( List.foldl (\a -> \b -> a.percentage + b) 0 model.inputs.allocations, model.inputs.initial_balance > 0 ) of
+                                    ( 100, True ) ->
                                         [ br
                                         , monochromeSquaredButton
                                             { background = Color.white
@@ -470,8 +470,11 @@ view model =
                                             CalculateValueToday
                                         ]
 
-                                    i ->
+                                    ( i, True ) ->
                                         [ div [] [ text ("Make sure to have 100 percents in total : " ++ String.fromInt i ++ "%") ] ]
+
+                                    _ ->
+                                        [ div [] [ text "Make sure to put an initial balance" ] ]
                                )
                         )
                             ++ (case model.portfolioResult of
