@@ -71,8 +71,7 @@ type alias Model =
 
 
 type alias PortfolioResult =
-    { finalBalance : Int
-    , allocations : List AllocationResult
+    { allocations : List AllocationResult
     , token : Maybe String
     , startDate : String
     , initialBalance : Int
@@ -357,8 +356,7 @@ sendPortfolioState inputs =
 
 portfolioResultSelector : SelectionSet PortfolioResult Object.PortfolioState
 portfolioResultSelector =
-    SelectionSet.map5 PortfolioResult
-        PortfolioState.final_balance
+    SelectionSet.map4 PortfolioResult
         (PortfolioState.allocations allocationSelector)
         PortfolioState.token
         PortfolioState.start_date
@@ -506,14 +504,18 @@ view model =
 
 showPortfolioResult : Int -> PortfolioResult -> Bool -> NodeWithStyle Msg
 showPortfolioResult initialBalance portfolioResult mutualization =
+    let
+        finalBalance =
+            List.foldl (+) 0 (List.map (calculAllocationFinalBalance initialBalance) portfolioResult.allocations)
+    in
     if mutualization then
         div []
-            [ div [] [ text ("Final Balance : " ++ String.fromInt portfolioResult.finalBalance ++ "$") ]
+            [ div [] [ text ("Final Balance : " ++ String.fromInt finalBalance ++ "$") ]
             , div []
                 [ text
                     (let
                         valueMade =
-                            portfolioResult.finalBalance - portfolioResult.initialBalance
+                            finalBalance - portfolioResult.initialBalance
                      in
                      (if valueMade >= 0 then
                         "You would have made "
@@ -530,6 +532,29 @@ showPortfolioResult initialBalance portfolioResult mutualization =
     else
         div []
             (List.map (showAllocationResult initialBalance) portfolioResult.allocations)
+
+
+calculAllocationFinalBalance : Int -> AllocationResult -> Int
+calculAllocationFinalBalance initialBalance allocation =
+    let
+        ratio =
+            case ( List.Extra.last allocation.price_per_times, List.head allocation.price_per_times ) of
+                ( Just last, Just first ) ->
+                    first.price / last.price
+
+                _ ->
+                    1
+
+        initialAllocationBalance =
+            toFloat (initialBalance * allocation.percentage) / 100
+
+        finalAllocationBalance =
+            ratio * initialAllocationBalance
+
+        -- profit =
+        --     round (finalAllocationBalance - initialAllocationBalance)
+    in
+    round finalAllocationBalance
 
 
 showAllocationResult : Int -> AllocationResult -> NodeWithStyle Msg
@@ -606,19 +631,22 @@ subscriptions _ =
 
 
 -- ENV
--- backendEndPoint : String
--- backendEndPoint =
---     "http://localhost:3000/"
--- frontendEndPoint : String
--- frontendEndPoint =
---     "http://localhost:8000/"
 
 
 backendEndPoint : String
 backendEndPoint =
-    "https://portfolio-performance-api.herokuapp.com/"
+    "http://localhost:3000/"
 
 
 frontendEndPoint : String
 frontendEndPoint =
-    "https://adoring-bohr-d3c27b.netlify.com/"
+    "http://localhost:8000/"
+
+
+
+-- backendEndPoint : String
+-- backendEndPoint =
+--     "https://portfolio-performance-api.herokuapp.com/"
+-- frontendEndPoint : String
+-- frontendEndPoint =
+--     "https://adoring-bohr-d3c27b.netlify.com/"

@@ -24,11 +24,6 @@ allocations object_ =
     Object.selectionForCompositeField "allocations" [] object_ (identity >> Decode.list)
 
 
-final_balance : SelectionSet Int PortfolioPerformance.Object.PortfolioState
-final_balance =
-    Object.selectionForField "Int" "final_balance" [] Decode.int
-
-
 id : SelectionSet String PortfolioPerformance.Object.PortfolioState
 id =
     Object.selectionForField "String" "id" [] Decode.string
