@@ -1,4 +1,12 @@
-module Utils exposing (findBy, gray, intToMonth, normalizeIntForDate, textToHtml)
+module Utils exposing
+    ( findBy
+    , gray
+    , intToMonth
+    , normalizeIntForDate
+    , onOrOff
+    , sameDate
+    , textToHtml
+    )
 
 import BodyBuilder exposing (NodeWithStyle, br, text)
 import Color
@@ -72,3 +80,31 @@ normalizeIntForDate str =
 
     else
         str
+
+
+onOrOff : Bool -> String
+onOrOff bool =
+    if bool then
+        "on"
+
+    else
+        "off"
+
+
+yearAndMonthFromDate : String -> { year : Int, month : Int }
+yearAndMonthFromDate str =
+    case String.split "-" str of
+        a :: b :: _ ->
+            { year = Maybe.withDefault 2013 (String.toInt a)
+            , month = Maybe.withDefault 1 (String.toInt b)
+            }
+
+        _ ->
+            { year = 2013
+            , month = 1
+            }
+
+
+sameDate : String -> String -> Bool
+sameDate a b =
+    (yearAndMonthFromDate a).year == (yearAndMonthFromDate b).year
