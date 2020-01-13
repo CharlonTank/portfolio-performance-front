@@ -22,6 +22,7 @@ import Graphql.Http exposing (..)
 import Graphql.Operation exposing (RootMutation, RootQuery)
 import Graphql.OptionalArgument exposing (..)
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
+import Html
 import List.Extra exposing (..)
 import Modifiers exposing (..)
 import PortfolioPerformance.InputObject as InputObject
@@ -448,7 +449,7 @@ homeView model =
                     ]
                 ]
             ]
-            [ view model ]
+            [ ( Html.node "style" [] [ Html.text "*{box-sizing: border-box;}" ], [] ), view model ]
     }
 
 
