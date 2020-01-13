@@ -27,7 +27,9 @@ var common = {
         filename: MODE == "production" ? "[name]-[hash].js" : "index.js"
     },
     plugins: [
-        new Dotenv(),
+        new Dotenv({
+            path: path.resolve(__dirname, './.env')
+          }),
         new HTMLWebpackPlugin({
             // Use this template to get basic responsive meta tags
             template: "src/index.html",
