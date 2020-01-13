@@ -1,5 +1,7 @@
 This is the front that comes with portfolio-performance-api
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/ca62f059-4da0-49f0-b3b9-835d518c2945/deploy-status)](https://app.netlify.com/sites/adoring-bohr-d3c27b/deploys)
+
 ---------------------------------------------------
 initial thoughts before coding :
 
