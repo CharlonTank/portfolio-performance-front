@@ -483,7 +483,7 @@ view model =
              ]
                 ++ buildAllocationsForm model.inputs.allocations
                 ++ (if model.loading then
-                        [ div [] [ text "...Loading..." ] ]
+                        [ div [] [ text "...Loading...should take less than 30 seconds..." ] ]
 
                     else
                         ([ monochromeSquaredButton
