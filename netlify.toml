@@ -1,4 +1,4 @@
 [context.dotenv]
     [context.dotenv.environment]
-        BACKEND_ENDPOINT=https://portfolio-performance-api.herokuapp.com/
-        FRONTEND_ENDPOINT=https://adoring-bohr-d3c27b.netlify.com/
+        BACKEND_ENDPOINT="https://portfolio-performance-api.herokuapp.com/"
+        FRONTEND_ENDPOINT="https://adoring-bohr-d3c27b.netlify.com/"
