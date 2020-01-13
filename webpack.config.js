@@ -27,9 +27,6 @@ var common = {
         filename: MODE == "production" ? "[name]-[hash].js" : "index.js"
     },
     plugins: [
-        new Dotenv({
-            path: path.resolve(__dirname, './.env')
-        }),
         new HTMLWebpackPlugin({
             // Use this template to get basic responsive meta tags
             template: "src/index.html",
@@ -87,6 +84,9 @@ var common = {
 if (MODE === "development") {
     module.exports = merge(common, {
         plugins: [
+            new Dotenv({
+                path: path.resolve(__dirname, './.env')
+            }),
             // Suggested for hot-loading
             new webpack.NamedModulesPlugin(),
             // Prevents compilation errors causing the hot loader to lose state
