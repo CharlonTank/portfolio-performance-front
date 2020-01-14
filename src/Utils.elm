@@ -1,5 +1,6 @@
 module Utils exposing
     ( findBy
+    , frontendUrl
     , gray
     , intToMonth
     , normalizeIntForDate
@@ -11,6 +12,7 @@ module Utils exposing
 import BodyBuilder exposing (NodeWithStyle, br, text)
 import Color
 import Time
+import Url
 
 
 findBy : (a -> b) -> b -> List a -> Maybe a
@@ -108,3 +110,28 @@ yearAndMonthFromDate str =
 sameDate : String -> String -> Bool
 sameDate a b =
     (yearAndMonthFromDate a).year == (yearAndMonthFromDate b).year
+
+
+stringFromProtocol : Url.Protocol -> String
+stringFromProtocol protocol =
+    case protocol of
+        Url.Https ->
+            "https"
+
+        Url.Http ->
+            "http"
+
+
+stringFromPort : Maybe Int -> String
+stringFromPort maybePort =
+    case maybePort of
+        Just port_ ->
+            ":" ++ String.fromInt port_
+
+        Nothing ->
+            ""
+
+
+frontendUrl : Url.Url -> String
+frontendUrl url =
+    stringFromProtocol url.protocol ++ "://" ++ url.host ++ stringFromPort url.port_ ++ "/"

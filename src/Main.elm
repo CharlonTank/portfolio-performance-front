@@ -8,6 +8,7 @@ import Browser
 import Browser.Navigation as Nav
 import Calendar exposing (Date, RawDate)
 import Color
+import Config
 import DateTime exposing (fromPosix)
 import Elegant exposing (SizeUnit, percent, pt, px, vh)
 import Elegant.Block as Block
@@ -38,7 +39,8 @@ import Time
 import Url
 import Utils
     exposing
-        ( intToMonth
+        ( frontendUrl
+        , intToMonth
         , normalizeIntForDate
         , onOrOff
         , sameDate
@@ -143,7 +145,7 @@ init flags url key =
         (Task.perform GetTime Time.now
             :: (case maybeToken of
                     Just token ->
-                        [ fetchPortfolio token ]
+                        [ fetchPortfolio (Config.endpoint url) token ]
 
                     Nothing ->
                         []
@@ -256,7 +258,7 @@ update msg model =
 
         CalculateValueToday ->
             ( { model | loading = True }
-            , createPortfolioState { inputs | save = True }
+            , createPortfolioState (Config.endpoint model.url) { inputs | save = True }
             )
 
         GotPortfolio receiveData ->
@@ -371,10 +373,10 @@ defaultDate =
     { day = 20, month = Time.Mar, year = 2013 }
 
 
-createPortfolioState : InputObject.PortfolioStateInputType -> Cmd Msg
-createPortfolioState inputs =
+createPortfolioState : String -> InputObject.PortfolioStateInputType -> Cmd Msg
+createPortfolioState endpoint inputs =
     sendPortfolioState inputs
-        |> Graphql.Http.mutationRequest (backendEndPoint ++ "graphql")
+        |> Graphql.Http.mutationRequest (endpoint ++ "graphql")
         |> Graphql.Http.send (RemoteData.fromResult >> GotPortfolio)
 
 
@@ -407,10 +409,10 @@ pricePerTimeSelector =
         PricePerTime.time
 
 
-fetchPortfolio : String -> Cmd Msg
-fetchPortfolio token =
+fetchPortfolio : String -> String -> Cmd Msg
+fetchPortfolio endpoint token =
     Query.portfolio_state { id = token } portfolioResultSelector
-        |> Graphql.Http.queryRequest (backendEndPoint ++ "graphql")
+        |> Graphql.Http.queryRequest (endpoint ++ "graphql")
         |> Graphql.Http.send (RemoteData.fromResult >> GotSavedPortfolio)
 
 
@@ -520,7 +522,7 @@ view model =
                                         , br
                                         , case portfolioResult.token of
                                             Just token ->
-                                                text ("Your portfolio is saved at this url : " ++ frontendEndPoint ++ token)
+                                                text ("Your portfolio is saved at this url : " ++ frontendUrl model.url ++ token)
 
                                             Nothing ->
                                                 div [] []
@@ -766,23 +768,3 @@ pricePerTimesWithDifferentYears listPrices =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.none
-
-
-
--- ENV
--- backendEndPoint : String
--- backendEndPoint =
---     "http://localhost:3000/"
--- frontendEndPoint : String
--- frontendEndPoint =
---     "http://localhost:8000/"
-
-
-backendEndPoint : String
-backendEndPoint =
-    "https://portfolio-performance-api.herokuapp.com/"
-
-
-frontendEndPoint : String
-frontendEndPoint =
-    "https://adoring-bohr-d3c27b.netlify.com/"
